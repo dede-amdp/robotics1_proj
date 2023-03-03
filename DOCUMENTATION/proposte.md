@@ -1,7 +1,7 @@
 # Proposta di Progetto
 ## Descrizione
 
-L'obbiettivo del progetto è realizzare un manipolatore planare a due bracci con controllo centralizzato nello spazio dei giunti che possa eseguire, disegnando con un pennarello su una whiteboard, delle traiettorie specificate dall'utente tramite una semplice interfaccia grafica e l'uso di una serie di primitive geometriche. 
+L'obiettivo del progetto è realizzare un manipolatore planare a due bracci con controllo centralizzato nello spazio dei giunti che possa eseguire, disegnando con un pennarello su una whiteboard, delle traiettorie specificate dall'utente tramite una semplice interfaccia grafica e l'uso di una serie di primitive geometriche. 
 
 ## Requisiti
 1. Realizzazione di un software per tracciare le traiettorie (nel piano) che il manipolatore dovrà eseguire (+ GUI);
