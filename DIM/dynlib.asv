@@ -424,7 +424,11 @@ adapted to any pose the robotic arm may have.
             Ja = (Ta^-1)*J;
         end
 
-        function dk
+        function [x, y, phi] = dk(lx, q)
+            x = lx(1)*cos(q(1))+lx(2)*cos(q(1)+q(2));
+            y = lx(1)*sin(q(1))+lx(2)*sin(q(1)+q(2));
+            phi = q(1)+q(2);
+        end
 
 
     end

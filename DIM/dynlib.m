@@ -400,7 +400,7 @@ adapted to any pose the robotic arm may have.
             end    
         end
 
-        function [J] = geometricjacobian(lx)
+        function [J] = geometricjacobian(obj, lx)
             syms("q1", "q2");
             q = [q1,q2];
             q12=q(1)+q(2);
@@ -417,17 +417,18 @@ adapted to any pose the robotic arm may have.
 
         end
 
-        function [Ja] = analyticaljacobian(lx)
+        function [Ja] = analyticaljacobian(obj, lx)
             T = obj.joint2op();
             Ta = [eye(3), zeros(3);zeros(3), T];
             J = obj.geometricjacobian(lx);
             Ja = (Ta^-1)*J;
         end
 
-        function [x, y, phi] = dk(lx, q)
+        function pos = dk(obj, lx, q)
             x = lx(1)*cos(q(1))+lx(2)*cos(q(1)+q(2));
             y = lx(1)*sin(q(1))+lx(2)*sin(q(1)+q(2));
             phi = q(1)+q(2);
+            pos = [x;y;0;phi;0;0]; % the rotation is only algon the z axis so the other angles are 0
         end
 
 
