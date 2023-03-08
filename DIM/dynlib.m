@@ -390,14 +390,19 @@ adapted to any pose the robotic arm may have.
                 end
 
                 % gravity component
-                g = g-m*[0 0 9.81]*J_p(:,l)-mm(l)*[0 0 9.81]*J_pm(:,l);
+                %g = g-m*[0 0 9.81]*J_p(:,l)-mm(l)*[0 0 9.81]*J_pm(:,l);
+
+                
                 
                 %{
                 TODO:
                 - facoltativo: aggiungere modellazione dell'attrito
                 %}
                 
-            end    
+            end 
+            % gravity component
+            g=obj.gravity(lx,ly,lz,rho, mm);
+
         end
 
         function [J] = geometricjacobian(obj, lx)
@@ -424,12 +429,62 @@ adapted to any pose the robotic arm may have.
             Ja = (Ta^-1)*J;
         end
 
-        function pos = dk(obj, lx, q)
+        function [pos] = dk(obj, lx, q)
             x = lx(1)*cos(q(1))+lx(2)*cos(q(1)+q(2));
             y = lx(1)*sin(q(1))+lx(2)*sin(q(1)+q(2));
             phi = q(1)+q(2);
             pos = [x;y;0;phi;0;0]; % the rotation is only algon the z axis so the other angles are 0
         end
+
+        
+        function [ gq ] =gravity(obj, lx ,ly ,lz ,rho, mm)
+        
+         syms("q1","q2");
+         q=[q1 q2];
+
+         q12=q(1)+q(2);
+
+        [cx1,~,~] =obj.centerofmass( lx(1), ly(1), lz(1), rho);
+        [cx2,~,~] =obj.centerofmass( lx(2), ly(2), lz(2), rho);
+
+
+        x1=cx1*cos(q(1));
+        x2=lx(1)*cos(q(1))+cx2*cos(q12);
+
+        y1=cx1*sin(q(1));
+        y2= lx(1)*sin(q(1))+cx2*sin(q12);
+           
+        pl1=[ x1 ; y1; 0];
+        pl2=[ x2 ; y2; 0];
+
+        pl= {pl1 ; pl2};
+       
+
+        pm1=obj.symzeros(3,1);
+        pm2=[lx(1)*cos(q(1)); lx(1)*sin(q(1)); 0];
+
+        pm= {pm1 ; pm2};
+
+        gq=obj.symzeros(2,1);
+        ml1=lx(1)*ly(1)*lz(1)*rho;
+        ml2=lx(2)*ly(2)*lz(2)*rho;
+        ml = [ml1;ml2];
+
+
+        for i=1:2
+                
+            for j=1:2
+                
+                gq(i)=gq(i)+ml(j)*[0 0 9.81]*diff(pl{j},q(i))+mm(j)*[0 0 9.81]*diff(pm{j},q(i));
+
+            end
+        end
+
+        end 
+
+
+
+
 
 
     end
