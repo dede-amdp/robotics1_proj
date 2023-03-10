@@ -483,9 +483,17 @@ adapted to any pose the robotic arm may have.
         end 
 
 
+        function [q] = ik(obj, x, lx )
+
+            c2=(x(1)^2+x(2)^2-lx(1)^2-lx(2)^2)/(2*lx(1)*lx(2));
+            s2=sqrt(1-c2^2);
 
 
+            q2=atan2(s2,c2);
+            q1=x(4)+x(6)-q2;
 
+            q=[q1; q2];
 
+        end
     end
 end
