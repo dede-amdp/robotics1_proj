@@ -379,23 +379,15 @@ adapted to any pose the robotic arm may have.
                 end
                 m=lx(l)*ly(l)*lz(l)*rho;
                 I = obj.linkinertia(l,lx,ly,lz,rho);
-                B = B + 0.5*m*(J_p')*J_p + 0.5*(J_o')*R*I*(R')*J_o;
+                B = B + m*(J_p')*J_p + (J_o')*R*I*(R')*J_o;
 
                 % kinetic energy of the motor
                 Jm = obj.motorjacobian(l, lx);
                 J_pm = Jm(1:3,:);
                 J_om = Jm(4:end,:);
-                B = B + (0.5*mm(l)*(J_pm')*J_pm+0.5*(J_om')*R*Im(l)*(R')*J_om)*kr(l)^2;
+                B = B + (mm(l)*(J_pm')*J_pm+(J_om')*R*Im(l)*(R')*J_om)*kr(l)^2;
                 
-                % coriolis matrix
-                for i=1:2
-                    for j=1:2
-                        C(i,j)=0;
-                        for k=1:2
-                            C(i,j)=C(i,j)+0.5*(diff(B(i,j), q(k))-diff(B(i,k),q(j))+diff(B(j,k),q(i)))*dq(k);
-                        end
-                    end
-                end
+                
 
                 % gravity component
                 %g = g-m*[0 0 9.81]*J_p(:,l)-mm(l)*[0 0 9.81]*J_pm(:,l);
@@ -410,6 +402,17 @@ adapted to any pose the robotic arm may have.
             end 
             % gravity component
             g=obj.gravity(lx,ly,lz,rho, mm);
+            
+            % coriolis matrix
+               
+             for i=1:2
+                    for j=1:2
+                        C(i,j)=0;
+                        for k=1:2
+                            C(i,j)=C(i,j)+0.5*(diff(B(i,j), q(k))+diff(B(i,k),q(j))-diff(B(j,k),q(i)))*dq(k); %mod
+                        end
+                    end
+                end
 
         end
 
