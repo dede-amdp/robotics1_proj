@@ -368,7 +368,7 @@ adapted to any pose the robotic arm may have.
             for l=1:2
                 % inertia matrix
                 % kinetic energy of the link
-                Jl = obj.linkjacobian(l,lx);
+                Jl = obj.linkjacobian(l,lx,ly,lz,rho);
                 J_p = Jl(1:3,:);
                 J_o = Jl(4:end,:);
                 R = eye(3);
@@ -452,10 +452,15 @@ adapted to any pose the robotic arm may have.
 
          q12=q(1)+q(2);
 
-        Com= obj.centerofmass(lx);
-        cx1=Com(1,1);
-        cx2=Com(1,2);
-       
+            Com= obj.centerofmass(lx);
+              cx1=Com(1,1);
+          =Com()
+            Cy=Com(2,i);
+
+        [cx1,~,~] =obj.centerofmass( lx(1), ly(1), lz(1), rho);
+        [cx2,~,~] =obj.centerofmass( lx(2), ly(2), lz(2), rho);
+
+
         x1=cx1*cos(q(1));
         x2=lx(1)*cos(q(1))+cx2*cos(q12);
 
