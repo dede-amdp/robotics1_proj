@@ -80,7 +80,7 @@ model of a 2Dofs planar robotic arm so that it may be used as a library.
 @#
 %}
         function M = symzeros(obj, n, m)
-            syms("x");
+            syms("x", "real");
             M = [x];
             M(1,1) = 0;
             for i = 1:n
@@ -143,7 +143,7 @@ robotic arm;
         function [J]=linkjacobian(obj, i, lx)
             % linkjacobian computes the i-th jacobian of the links of a 2 Dof
             % planar robotic arm with sizes (lx, ly, lz), density rho
-            syms("q1", "q2");
+            syms("q1", "q2", "real");
             q = [q1,q2];
 
             Com= obj.centerofmass(lx);
@@ -182,7 +182,12 @@ robotic arm;
             Com= obj.centerofmass(lx);
             Cx=Com(1,i);
           
-            inertia = lx(i)*ly(i)*lz(i)*rho*((ly(i)^2+lx(i)^2)/12+Cx);
+
+
+            %inertia = lx(i)*ly(i)*lz(i)*rho*((ly(i)^2+lx(i)^2)/12+Cx);
+            Iz = lx(i)*ly(i)*lz(i)*rho*((ly(i)^2+lx(i)^2)/12+Cx);
+            inertia= [0 0 0; 0 0 0; 0 0 Iz];
+            
         end
 
 %{
@@ -205,7 +210,7 @@ follows: T = [R p;0 0 0 1]
         function [T, R, p] = dh(obj, lx)
             % computes the position and rotation matrices by using the
             % dh convention
-            syms("q1","q2");
+            syms("q1","q2", "real");
             q=[q1;q2];
             q12=q(1)+q(2);
             c12=cos(q12);
@@ -232,7 +237,7 @@ NONE
         function [T] = joint2op(obj)
             % joint2op computes the matrix needed to convert the jacobian
             % from the joint space to the operational space
-            syms("q1","q2");
+            syms("q1","q2", "real");
             q=[q1;q2];
             q12=q(1)+q(2);
             c12=cos(q12);
@@ -315,18 +320,19 @@ simulations for a 2Dofs planar robotic arm
 @#
 %}
 
-        function [J] = motorjacobian(obj, i, lx)
+        function [J] = motorjacobian(obj, i, lx, kr)
             % motorjacobian computes the jacobian of the motors of a 2 Dofs
             % planar robotic arm
-            syms("q1","q2");
+            syms("q1","q2", "real");
             q=[q1;q2];
             J = obj.symzeros(6,2);
-            J(6,1)= 1;
+            J(6,1)= kr(i);
             
             if(i==2)
                 J(1,1)=-lx(1)*sin(q(1));
                 J(2,1)=lx(1)*cos(q(1));
-                J(6,2)=1;
+                J(6,1)= 1;
+                J(6,2)= kr(i);
             end
         end
 
@@ -358,13 +364,14 @@ adapted to any pose the robotic arm may have.
             % arma as matrices B(q), C(q, q_dot) and component g(q) as
             % symbolic matrices
 
-            syms("q1","q2", "dq1", "dq2");
+            syms("q1","q2", "dq1", "dq2", "real");
             q = [q1; q2];
             dq = [dq1; dq2];
             B = obj.symzeros(2,2);
             C = obj.symzeros(2,2);
             g = obj.symzeros(1,1);
             Rot = @(q) [cos(q), -sin(q), 0; sin(q), cos(q), 0; 0 0 1];
+            %{
             for l=1:2
                 % inertia matrix
                 % kinetic energy of the link
@@ -379,13 +386,15 @@ adapted to any pose the robotic arm may have.
                 end
                 m=lx(l)*ly(l)*lz(l)*rho;
                 I = obj.linkinertia(l,lx,ly,lz,rho);
-                B = B + m*(J_p')*J_p + (J_o')*R*I*(R')*J_o;
-
+                B = simplify(B + m*(J_p.')*J_p + (J_o.')*R*I*(R.')*J_o);
+                
                 % kinetic energy of the motor
-                Jm = obj.motorjacobian(l, lx);
+                Jm = obj.motorjacobian(l, lx,kr);
                 J_pm = Jm(1:3,:);
                 J_om = Jm(4:end,:);
-                B = B + (mm(l)*(J_pm')*J_pm+(J_om')*R*Im(l)*(R')*J_om)*kr(l)^2;
+                I_m = diag([0 0 Im(l)]);
+                                
+                B = simplify(B + mm(l)*(J_pm.')*J_pm+(J_om.')*R*I_m*(R.')*J_om);% *kr(l)^2;
                 
                 
 
@@ -400,24 +409,46 @@ adapted to any pose the robotic arm may have.
                 %}
                 
             end 
+            %}
+            %{a
+            for i=1:2
+                Jl = obj.linkjacobian(i,lx);
+                Jp = Jl(1:3,:);
+                Jo = Jl(4:end,:);
+                R = eye(3);
+                if(i == 2)
+                    R = Rot(q(1)+q(2));
+                else
+                    R = Rot(q(1));
+                end
+                ml=lx(i)*ly(i)*lz(i)*rho;
+                Il = obj.linkinertia(i,lx,ly,lz,rho);
+                Jm = obj.motorjacobian(i, lx,kr);
+                Jpm = Jm(1:3,:);
+                Jom = Jm(4:end,:);
+                I_m = diag([0 0 Im(i)]);
+
+                B=B+ml*(Jp.')*Jp+(Jo.')*R*Il*(R.')*Jo+mm(i)*(Jpm.')*Jpm+(Jom.')*R*I_m*(R.')*Jom;
+            end
+            %}a
             % gravity component
             g=obj.gravity(lx,ly,lz,rho, mm);
             
             % coriolis matrix
                
-             for i=1:2
-                    for j=1:2
-                        C(i,j)=0;
-                        for k=1:2
-                            C(i,j)=C(i,j)+0.5*(diff(B(i,j), q(k))+diff(B(i,k),q(j))-diff(B(j,k),q(i)))*dq(k); %mod
-                        end
+            for i=1:2
+                for j=1:2
+                    C(i,j)=0;
+                    for k=1:2
+                        C(i,j)=simplify(C(i,j)+0.5*(diff(B(i,j), q(k))+diff(B(i,k),q(j))-diff(B(j,k),q(i)))*dq(k)); %mod
                     end
                 end
+            end
 
         end
 
         function [J] = geometricjacobian(obj, lx)
-            syms("q1", "q2");
+            syms("q1", "q2", "real");
             q = [q1,q2];
             q12=q(1)+q(2);
 
@@ -450,7 +481,7 @@ adapted to any pose the robotic arm may have.
         
         function [ gq ] =gravity(obj, lx ,ly ,lz ,rho, mm)
         
-         syms("q1","q2");
+         syms("q1","q2", "real");
          q=[q1 q2];
 
          q12=q(1)+q(2);
