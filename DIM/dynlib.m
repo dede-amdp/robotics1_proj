@@ -129,7 +129,7 @@ simulations for a 2Dofs planar robotic arm
             links(1) = Link('d', 0,'alpha', 0,'a', lx(1));
             links(2) = Link('d', 0,'alpha', 0,'a', lx(2));
             
-            links(1).m = mass(1);
+            links(1).m = mass(1)+2*mm(2);
             links(2).m = mass(2);
             
             % CoG

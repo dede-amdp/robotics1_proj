@@ -410,7 +410,7 @@ adapted to any pose the robotic arm may have.
                 
             end 
             %}
-            %{a
+            
             for i=1:2
                 Jl = obj.linkjacobian(i,lx);
                 Jp = Jl(1:3,:);
@@ -430,12 +430,12 @@ adapted to any pose the robotic arm may have.
 
                 B=B+ml*(Jp.')*Jp+(Jo.')*R*Il*(R.')*Jo+mm(i)*(Jpm.')*Jpm+(Jom.')*R*I_m*(R.')*Jom;
             end
-            %}a
+            
             % gravity component
             g=obj.gravity(lx,ly,lz,rho, mm);
             
             % coriolis matrix
-               
+
             for i=1:2
                 for j=1:2
                     C(i,j)=0;
