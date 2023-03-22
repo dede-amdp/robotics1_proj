@@ -8,11 +8,15 @@ web_options = {'host':'localhost', 'port':6969}
 
 @eel.expose
 def pyget_data():
-    eel.jslog("Method entered")
     data_points = eel.jsget_points()()
+    q = []
     for p in data_points:
+        qt = ik(p['x'], p['y'],0)
+        q.append(qt)
         eel.jslog(str(p))
+        eel.jslog('q:'+str(qt))
     pass
+
 
 
 if __name__ == "__main__":
@@ -39,3 +43,8 @@ if __name__ == "__main__":
     plt.legend(['q','dq','ddq'])
     plt.show()
     '''
+
+'''
+TODO:
+- check if ik is correct, it gives sus values :/
+'''

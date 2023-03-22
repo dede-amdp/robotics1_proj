@@ -72,6 +72,5 @@ function canvas_update() {
 }
 
 function handle_data() {
-    console.log("Handling data");
     eel.pyget_data();
 }

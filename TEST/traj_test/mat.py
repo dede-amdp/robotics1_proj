@@ -77,5 +77,18 @@ class mat:
         if d == 0: return None
         return self.adj().t().mult(1/d)
     
+    def __getitem__(self, key):
+        if isinstance(key[0], slice):
+            key = (key[1], key[0])
+            M = self.t()
+            return M[key]
+        else:
+            x,y = key
+            return self.data[x][y]
+
+    def __setitem__(self, key:tuple[int], value):
+        x,y = key
+        self.data[x][y] = value
+    
     def __str__(self):
         return str(self.data)
