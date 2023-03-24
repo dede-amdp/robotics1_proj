@@ -14,6 +14,13 @@ const settings = {
 
 */
 
+var settings = {
+    'origin': { 'x': 0, 'y': 500 / 2 },
+    'm_p': 0.5 / 500, // m/p 
+    'l1': 0.25,
+    'l2': 0.25
+};
+
 
 function rel2abs(x, y, settings) {
     var x_a = (x - settings['origin']['x']) * settings['m_p'];
@@ -29,7 +36,7 @@ function abs2rel(x, y, settings) {
 
 eel.expose(jsdraw_pose);
 function jsdraw_pose(q) {
-    if (!('settings' in window)) {
+    /*if (!('settings' in window)) {
         console.log('This method requires the global variable `settings` that has to contain:\n' +
             '- `origin` field (js object) containing an x and y field,\n' +
             '- `m_p` field containing the conversion ration between meters and pixes (m/p),\n' +
@@ -39,17 +46,17 @@ function jsdraw_pose(q) {
     if (!('ctx' in window)) {
         console.log('This method requires the canvas context to be a global variable called `ctx`');
         return
-    }
+    }*/
     ctx.beginPath();
     ctx.strokeStyle = '#000000';
     ctx.moveTo(settings['origin']['x'], settings['origin']['y']);
     var p1 = [settings['l1'] * Math.cos(q[0]), settings['l1'] * Math.sin(q[0])]
     var p2 = [p1[0] + settings['l2'] * Math.cos(q[0] + q[1]), p1[1] + settings['l2'] * Math.sin(q[0] + q[1])];
-    var p1rel = abs2rel(p1[0], p1[1]);
+    var p1rel = abs2rel(p1[0], p1[1], settings);
     console.log(p1, p1rel);
     ctx.lineTo(p1rel[0], p1rel[1]);
     ctx.moveTo(p1rel[0], p1rel[1]);
-    var p2rel = abs2rel(p2[0], p2[1]);
+    var p2rel = abs2rel(p2[0], p2[1], settings);
     console.log(p2, p2rel);
     ctx.lineTo(p2rel[0], p2rel[1]);
     ctx.stroke();

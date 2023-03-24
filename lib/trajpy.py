@@ -61,6 +61,14 @@ def rangef(start:float=0, step:float=1, end:float=0) -> list:
         i += step
     return r
 
+def compose_tragectory(q:list[mat], method:function)->mat:
+    max_speed = 1.05 # rad/s
+    for i in q[:len(q)-1]:
+        for j in q[1:len(q)]:
+            q1 = tuple(i.t().data[0]) # initial and final positions of the first joint
+            q2 = tuple(j.t().data[0]) # initial and final positions of the second joint
+            pass
+
 
 def ik(x:float, y:float, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2':0.25}) -> mat:
     if x**2+y**2 > (sizes['l1']+sizes['l2'])**2: return None
@@ -86,3 +94,10 @@ def dk(q:mat, sizes:dict[float] = {'l1':0.25,'l2':0.25})->mat:
     y = sizes['l1']*sin(q[0,0])+sizes['l2']*sin(q[0,0]+q[1,0])
     theta = q[0,0]+q[1,0]
     return mat([[x,y,theta]]).t()
+
+
+# TODO:
+'''
+Create a minimum time trajectory and use it to compose the trajectory in the method compose_trajectory:
+consider the maximum speed 1.05 rad/s, because it is the speed reached by going at the maximum acceleration (1.05 rad/s^2) for exactly 1 second
+'''

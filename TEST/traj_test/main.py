@@ -1,8 +1,13 @@
 import eel
-import matplotlib.pyplot as plt
-from trajpy import *
+#import matplotlib.pyplot as plt
+#from trajpy import *
+#from mat import *
+#from math import atan2, pi
+
+import sys
+sys.path.insert(1, '../../lib/')
 from mat import *
-from math import atan2, pi
+from trajpy import *
 
 
 web_options = {'host':'localhost', 'port':6969}
@@ -18,10 +23,10 @@ def pyget_data():
         eel.jslog(f'q: [{qt[0,0]}, {qt[1,0]}]')
         eel.jslog(f'p: [{0.25*cos(qt[0,0])+0.25*cos(qt[0,0]+qt[1,0])},{0.25*sin(qt[0,0])+0.25*sin(qt[0,0]+qt[1,0])}]')
     eel.jsdraw_pose(q[-1][:,0])
+    compose_trajectory(q, spline5)
     # scrivi la funzione js che prenda direttamente la dk ?
     #eel.jsdraw_pose([pi/4, pi/4])
     pass
-
 
 
 if __name__ == "__main__":
