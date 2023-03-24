@@ -1,5 +1,5 @@
 from mat import *
-from math import sqrt,atan2,cos,sin
+from math import sqrt,atan2,cos,sin,pi,acos
 
 point_time = tuple[float, float]
 
@@ -62,16 +62,27 @@ def rangef(start:float=0, step:float=1, end:float=0) -> list:
     return r
 
 
-def ik(x:float, y:float, theta:float, sizes:dict[float] = {'l1':0.25,'l2':0.25}) -> mat:
-    q = mat.create(2,1)
-    cos_q2 = (x**2+y**2-sizes['l1']**2-sizes['l2']**2)/(2*sizes['l1']*sizes['l2'])
-    sin_q2 = sqrt(1-cos_q2**2)
-    q[1,0] = atan2(sin_q2, cos_q2)
-    q[0,0] = theta-q.data[1][0]
+def ik(x:float, y:float, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2':0.25}) -> mat:
+    if x**2+y**2 > (sizes['l1']+sizes['l2'])**2: return None
+    q1 = 0
+    q2 = 0
+    a1 = sizes['l1']
+    a2 = sizes['l2']
+    
+    if theta is not None:
+        cos_q2 = (x**2+y**2-sizes['l1']**2-sizes['l2']**2)/(2*sizes['l1']*sizes['l2'])
+        sin_q2 = sqrt(1-cos_q2**2)
+        q2 = atan2(sin_q2, cos_q2)
+        q1 = theta-q2
+    else:
+        q2 = acos((x**2+y**2-a1**2-a2**2)/(2*a1*a2))
+        q1 = atan2(y,x)-atan2(a2*sin(q2), a1+a2*cos(q2))
+    
+    q = mat([[q1,q2]]).t()
     return q
 
 def dk(q:mat, sizes:dict[float] = {'l1':0.25,'l2':0.25})->mat:
-    x = sizes['l1']*cos(q.data[0,0])+sizes['l2']*cos(q.data[0,0]+q.data[1,0])
-    y = sizes['l1']*sin(q.data[0,0])+sizes['l2']*sin(q.data[0,0]+q.data[1,0])
+    x = sizes['l1']*cos(q[0,0])+sizes['l2']*cos(q[0,0]+q[1,0])
+    y = sizes['l1']*sin(q[0,0])+sizes['l2']*sin(q[0,0]+q[1,0])
     theta = q[0,0]+q[1,0]
     return mat([[x,y,theta]]).t()

@@ -2,6 +2,7 @@ import eel
 import matplotlib.pyplot as plt
 from trajpy import *
 from mat import *
+from math import atan2, pi
 
 
 web_options = {'host':'localhost', 'port':6969}
@@ -11,10 +12,14 @@ def pyget_data():
     data_points = eel.jsget_points()()
     q = []
     for p in data_points:
-        qt = ik(p['x'], p['y'],0)
+        qt = ik(p['x'], p['y']) # TODO: check this out -> how do I find the approach angle?
         q.append(qt)
         eel.jslog(str(p))
-        eel.jslog('q:'+str(qt))
+        eel.jslog(f'q: [{qt[0,0]}, {qt[1,0]}]')
+        eel.jslog(f'p: [{0.25*cos(qt[0,0])+0.25*cos(qt[0,0]+qt[1,0])},{0.25*sin(qt[0,0])+0.25*sin(qt[0,0]+qt[1,0])}]')
+    eel.jsdraw_pose(q[-1][:,0])
+    # scrivi la funzione js che prenda direttamente la dk ?
+    #eel.jsdraw_pose([pi/4, pi/4])
     pass
 
 
@@ -22,27 +27,6 @@ def pyget_data():
 if __name__ == "__main__":
     eel.init("./layout")
     eel.start("./index.html", host=web_options['host'], port=web_options['port'])
-    '''
-    PI = 3.14
-    a = spline5([(0,0), (PI,4)], [(0,0), (0,4)], [(0,0),(0,4)])
-    q = []
-    dq = []
-    ddq = []
-    time = []
-    for it in rangef(0,0.1,2+0.1):
-        t = mat([time_row(it, 5, 0)])
-        dt = mat([time_row(it,5,1)])
-        ddt = mat([time_row(it,5,2)])
-        q.append(t.dot(a).data[0][0])
-        dq.append(dt.dot(a).data[0][0])
-        ddq.append(ddt.dot(a).data[0][0])
-        time.append(it)
-
-    plt.plot(time, q, time, dq, time, ddq)
-    plt.grid(visible=True)
-    plt.legend(['q','dq','ddq'])
-    plt.show()
-    '''
 
 '''
 TODO:
