@@ -12,7 +12,7 @@ def pyget_data():
     data_points = eel.jsget_points()()
     q = []
     for p in data_points:
-        qt = ik(p['x'], p['y']) # TODO: check this out -> how do I find the approach angle?
+        qt = ik(p['x'], p['y'])
         q.append(qt)
         eel.jslog(str(p))
         eel.jslog(f'q: [{qt[0,0]}, {qt[1,0]}]')
@@ -27,8 +27,3 @@ def pyget_data():
 if __name__ == "__main__":
     eel.init("./layout")
     eel.start("./index.html", host=web_options['host'], port=web_options['port'])
-
-'''
-TODO:
-- check if ik is correct, it gives sus values :/
-'''
