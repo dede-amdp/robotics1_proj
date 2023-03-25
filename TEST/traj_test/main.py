@@ -23,7 +23,8 @@ def pyget_data():
         eel.jslog(f'q: [{qt[0,0]}, {qt[1,0]}]')
         eel.jslog(f'p: [{0.25*cos(qt[0,0])+0.25*cos(qt[0,0]+qt[1,0])},{0.25*sin(qt[0,0])+0.25*sin(qt[0,0]+qt[1,0])}]')
     eel.jsdraw_pose(q[-1][:,0])
-    compose_trajectory(q, spline5)
+    #print([str(r[0])+','+str(r[1]) for r in comp_spline3([qk[0,0] for qk in q])])
+    print([str(r[0])+','+str(r[1]) for r in compose_trap([qk[0,0] for qk in q])])
     # scrivi la funzione js che prenda direttamente la dk ?
     #eel.jsdraw_pose([pi/4, pi/4])
     pass
