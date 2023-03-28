@@ -49,56 +49,82 @@ def spline5(q: list[point_time], dq: list[point_time], ddq: list[point_time])->m
     b = mat(known_terms)
     return A.inv().dot(b)
 
-def rangef(start:float=0, step:float=1, end:float=0) -> list:
+def rangef(start:float=0, step:float=1, end:float=0, consider_limit:bool = False) -> list:
     if step == 0: return []
     if start >= end: return []
     if start < end and step < 0: return []
     if start > end and step > 0: return []
     r = []
     i = start
-    while i < end:
-        r.append(i)
-        i += step
+    if not consider_limit:
+        while i < end:
+            r.append(i)
+            i += step
+    else:
+        while i <= end:
+            r.append(i)
+            i += step
     return r
 
-'''
-def compose_tragectory(q:list[float], method:function)->list[mat]:
-    #max_speed = 1.05 # rad/s
-    A = []
-    dq0 = 0
-    for k in range(len(q)-1):
-        q1 = tuple(q[k]) # initial position of the joint
-        q2 = tuple(q[k+1]) # final position of the joint
-        q0 = q[k-1] if k-1 >= 0 else q[0]
-        q3 = q[k+2] if k+2 < len(q) else q[-1]
-        dq1 = 0 if k == len(q)-1 else 0 ## ???
-        avg_speed = (dq1-dq0)/2 # average speed
-        tf = (q2-q1)/avg_speed # a strategy to compute the time is using the avg speed
-        a = method([(q1,0), (q2,tf)], [(dq0,0), (dq1,tf)]).t()
-        dq0 = dq1
-        A.append(a)
-    return mat(A)
-'''
 
-def comp_spline3(q:list[float], ddqm:float = 1.05, dt:list = None)-> list[(mat, float)]:
-    # q = q0+1/2 at**2 -> t = sqrt(2(q-q0)/a)
+def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list=None)->list[(mat, float)]:
+    q = preprocess(q)
     A = []
-    dq0 = 0
-    dq2 = 0
-    for k in range(len(q)-1):
-        q0 = q[k-1] if k-1 >=0 else q[0]
-        q1 = q[k]
-        q2 = q[k+1]
-        q3 = q[k+2] if k+2 < len(q) else q[-1]
-        dt0 = dt[k-1] if k-1 >= 0 and dt is not None else sqrt(2*(q1-q0)/ddqm)
-        dt1 = dt[k] if dt is not None else sqrt(2*(q2-q1)/ddqm) # if dt is not given, compute it as if the manipulator went at a constant acceleration
-        dt2 = dt[k+1] if k+1 < len(q) and dt is not None else sqrt(2*(q3-q2)/ddqm)
-        dq0 = dq2 if dt0 > 0 else 0
-        dq2 = (q3-q2)/dt2 if dt2 > 0 else 0
-        #dq1 = (dq0+dq2)/2
-        a = spline3([(q1, 0), (q2, dt1)], [(dq0,0), (dq2, dt1)]).t()#, [(0,0),(0,dt1)]).t()
-        A.append((a, dt1))
+    tf = 0
+    if dts is None:
+        dts = []
+        # ?? VALORE EMPIRICO *2 -> COME LO SCEGLIAMO DT?
+        tf = sqrt((4*abs(q[-1]-q[0]))/abs(ddqm)) # time of a bang bang profile from start to finish * 2
+        l = 0
+        for i,j in zip(q[0:len(q)-1], q[1:]): l += abs(j-i)
+        for i,j in zip(q[0:len(q)-1], q[1:]): dts.append(tf*4*abs(j-i)/l)
+    else:
+        for t in dts: tf+=t
+    dqs = cubic_speeds(q, dts)
+    for i, dt in zip(range(len(q)-1), dts):
+        qi = q[i]
+        qj = q[i+1]
+        a = spline3([(qi,0), (qj, dt)], [(dqs[i], 0), (dqs[i+1], dt)])
+        A.append((a.t(), dt))
     return A
+
+def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
+    if len(q) < 3 : return [0, 0]
+    A = mat.create(len(q)-2, len(q)-2, 0)
+    c = mat.create(len(q)-2, 1, 0)
+    for i in range(len(q)-2):
+        A[i,i] += 2*(dts[i]+dts[i+1])
+        if i+1 < A.m:
+            A[i, i+1] += dts[i] 
+        if i-1 >= 0:
+            A[i, i-1] += dts[i+1]
+    #print(A)
+    deltaq = []
+    for qi,qj in zip(q[:len(q)-1], q[1:]):
+        deltaq.append(qj-qi)
+    for k in range(1,len(q)-2):
+        c[k-1,0] = 3*(dts[k]**2*deltaq[k+1]+dts[k+1]**2+deltaq[k])/(dts[k]*dts[k+1])
+    #print(c)
+    # the initial and final values of the speeds are not summed because they are 0
+    dq = A.inv().dot(c)
+    return [0]+dq.t().data[0]+[0]
+
+def preprocess(q: list[float], limit:float=pi/3) -> list[float]:
+    new_q = []
+    for i,j in zip(range(0,len(q)-1), range(1,len(q))):
+        qi = q[i]
+        qj = q[j]
+        if abs(qj-qi) > limit:
+            if qi < qj:
+                for qk in rangef(qi, limit, qj, True):
+                    new_q.append(qk)
+            else:
+                for qk in rangef(qi, -limit, qj, True):
+                    new_q.append(qk)
+        else:
+            new_q.append(qi)
+    new_q.append(q[-1])
+    return new_q
 
 def trapezoidal(q:list[float], ddqm:float = 1.05, tf: float = None) -> list[(mat, float)]:
     # abs(ddqm) >= 4*abs(q[1]-q[0])/tf**2
@@ -153,10 +179,3 @@ def dk(q:mat, sizes:dict[float] = {'l1':0.25,'l2':0.25})->mat:
     y = sizes['l1']*sin(q[0,0])+sizes['l2']*sin(q[0,0]+q[1,0])
     theta = q[0,0]+q[1,0]
     return mat([[x,y,theta]]).t()
-
-
-# TODO:
-'''
-Create a minimum time trajectory and use it to compose the trajectory in the method compose_trajectory:
-consider the maximum speed 1.05 rad/s, because it is the speed reached by going at the maximum acceleration (1.05 rad/s^2) for exactly 1 second
-'''

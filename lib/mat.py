@@ -75,6 +75,7 @@ class mat:
     def inv(self):
         d = self.det()
         if d == 0: return None
+        if self.n ==1 : return mat([[1/self.data[0][0]]])
         return self.adj().t().mult(1/d)
     
     def __getitem__(self, key):
@@ -91,4 +92,7 @@ class mat:
         self.data[x][y] = value
     
     def __str__(self):
+        return str(self.data)
+
+    def __repr__(self):
         return str(self.data)
