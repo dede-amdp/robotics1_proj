@@ -42,7 +42,7 @@ where q is the position spline, dq is the velocity spline and ddq is the acceler
 - list[point_time] q: it is a list of tuples of a value (float) and a time instant (float). These values and time instants will be used to write a polynomial (with variable "t") that will cross the specified values at t equal to the specified times;
 - list[point_time] dq: it is a list of a value (float) and a time instant (float). These values and time instants will be used to write a polynomial (with variable "t") which derivative will cross the specified values at t equal to the specified times;
 @outputs: 
-- np.ndarray : numpy array of the coefficients of the 3rd order polynomial that crosses the specified points.
+- ndarray : numpy array of the coefficients of the 3rd order polynomial that crosses the specified points.
 @# """
 def spline3(q: list[point_time], dq: list[point_time])->np.ndarray: #, ddq: list[point_time])-> list:
     '''
@@ -74,7 +74,7 @@ ddq = 2a2+6a3t+12a4t^2+20a5t^3
 - list[point_time] q: it is a list of tuples of a value (float) and a time instant (float). These values and time instants will be used to write a polynomial (with variable "t") that will cross the specified values at t equal to the specified times;
 - list[point_time] dq: it is a list of a value (float) and a time instant (float). These values and time instants will be used to write a polynomial (with variable "t") which derivative will cross the specified values at t equal to the specified times;
 @outputs: 
-- np.ndarray : numpy array of the coefficients of the 5th order polynomial that crosses the specified points.
+- ndarray : numpy array of the coefficients of the 5th order polynomial that crosses the specified points.
 @# """
 def spline5(q: list[point_time], dq: list[point_time], ddq: list[point_time])->np.ndarray:
     '''
@@ -126,14 +126,19 @@ def rangef(start:float=0, step:float=1, end:float=0, consider_limit:bool = False
 """ #@
 @name: compose_spline3
 @brief: returns the trajectory that results from the composition of the cubic splines obtained for each couple of points in the specified path.
-@inputs: inputs
-@outputs: outputs
+@inputs: 
+- list[float] q: list of points that compose the path;
+- float ddqm: maximum acceleration;
+- list[float] dts: duration of each splines;
+@outputs: 
+- list[tuple[ndarray, float]] :  list of coefficients/spline-duration tuples.
 @# """
-def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list=None)->list[tuple[np.ndarray, float]]:
+def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list[float]=None)->list[tuple[np.ndarray, float]]:
     q = preprocess(q)
     A = []
     tf = 0
     if dts is None:
+        # compute the duration of each spline
         dts = []
         # ?? VALORE EMPIRICO *2 -> COME LO SCEGLIAMO DT?
         tf = sqrt((4*abs(q[-1]-q[0]))/abs(ddqm)) # time of a bang bang profile from start to finish * 2
@@ -150,6 +155,15 @@ def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list=None)->list[tuple
         A.append((a.T, dt))
     return A
 
+""" #@
+@name: cubic_speeds
+@brief: computes the speeds of the intermediate points of a cubic spline
+@inputs: 
+- list[float] q: list of the points of the path;
+- list[float] dts: list of the duration of each section of the path;
+@outputs: 
+- list[float]: list of intermediate speeds.
+@# """
 def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
     if len(q) < 3 : return [0, 0]
     A = np.zeros((len(q)-2, len(q)-2))
@@ -160,17 +174,25 @@ def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
             A[i, i+1] += dts[i] 
         if i-1 >= 0:
             A[i, i-1] += dts[i+1]
-    #print(A)
     deltaq = []
     for qi,qj in zip(q[:len(q)-1], q[1:]):
         deltaq.append(qj-qi)
     for k in range(1,len(q)-2):
         c[k-1,0] = 3*(dts[k]**2*deltaq[k+1]+dts[k+1]**2+deltaq[k])/(dts[k]*dts[k+1])
-    #print(c)
     # the initial and final values of the speeds are not summed because they are 0
-    dq = A.inv().dot(c)
-    return [0]+dq.t().data[0]+[0]
+    dq = np.dot(np.linalg.inv(A), c)
+    return [0]+dq.T.tolist()[0]+[0]
 
+
+""" #@
+@name: preprocess
+@brief: subdivides the ranges passed as a list into smaller ranges of size equal to the specified limit.
+@inputs: 
+- list[float] q: list of values;
+- float limit: limit value used to subdivide the specified ranges (q);
+@outputs: 
+- list[float]: new list of values whose ranges are smaller or equal to the specified limit;
+@# """
 def preprocess(q: list[float], limit:float=pi/3) -> list[float]:
     new_q = []
     for i,j in zip(range(0,len(q)-1), range(1,len(q))):
@@ -188,13 +210,26 @@ def preprocess(q: list[float], limit:float=pi/3) -> list[float]:
     new_q.append(q[-1])
     return new_q
 
+
+""" #@
+@name: trapezoidal
+@brief: computes the trapezoidal speed profile trajectory for the specified points;
+@notes: the trapezoidal trajectory is subdivided into 3 sections, 2 parabolic ones of equal duration (initial and final ones) and a linear section with constant velocity.
+@inputs: 
+- list[float] q: list that contains the initiasl and final values of the trajectory;
+- float ddqm: maximum acceleration;
+- float tf: duration of the trajectory;
+@outputs: 
+- list[tuple[ndarray, float]]: list containing the coefficients of each section of the trajectory and their durations.
+@# """
 def trapezoidal(q:list[float], ddqm:float = 1.05, tf: float = None) -> list[tuple[np.ndarray, float]]:
     # abs(ddqm) >= 4*abs(q[1]-q[0])/tf**2
     # tf**2/(4*abs(q[1]-q[0])) >= 1/abs(ddqm)
     # tf >= +sqrt((4*abs(q[1]-q[0]))/abs(ddqm))
     tc = 0
     if tf is None:
-        tf = sqrt((4*abs(q[1]-q[0]))/abs(ddqm)) # bang bang profile
+        # if the duration time is not specified, use a bang bang profile
+        tf = sqrt((4*abs(q[1]-q[0]))/abs(ddqm)) # bang-bang profile
         tc = tf/2
     else:
         if abs(ddqm) < 4*abs(q[1]-q[0])/tf**2:
@@ -208,6 +243,16 @@ def trapezoidal(q:list[float], ddqm:float = 1.05, tf: float = None) -> list[tupl
     third = (np.array([[qb],[ddqm*tc], [-0.5*ddqm]]).T, tc)
     return [first, second, third]
 
+
+""" #@
+@name: compose_trapezoidal
+@brief: returns the trajectory that results from the composition of the trapezoidal speed profile trajectories obtained for each couple of points of the specified path.
+@inputs: 
+- list[float] q: list of points that compose the path;
+- float ddqm: maximum acceleration;
+@outputs: 
+- list[tuple[ndarray, float]] :  list of coefficients/trapezoidal-duration tuples.
+@# """
 def compose_trapezoidal(q:list[float], ddqm:float = 1.05) -> list[tuple[np.ndarray, float]]:
     A = []
     for k in range(len(q)-1):
@@ -217,14 +262,36 @@ def compose_trapezoidal(q:list[float], ddqm:float = 1.05) -> list[tuple[np.ndarr
         A += qk
     return A
 
+""" #@
+@name: cycloidal
+@brief: computes a cycloidal trajectory 
+@notes: the cycloidal trajectory is not polynomial, so it cannot be represented as a list of coefficients: for this reason a function handle is created for the position q, the speed dq and the acceleration ddq that can be used to compute the trajectory given t.
+@inputs: 
+- list[float] q: initial and final values of the trajectory;
+- float ddqm: maximum acceleration;
+- float tf: duration of the trajectory;
+@outputs: 
+- tuple[list[fuction], float] : function-handle/cycloidal-duration tuple. 
+@# """
 def cycloidal(q:list[float], ddqm:float = 1.05, tf:float=None) -> tuple[list[function], float]: # return the function handles for q, dq and ddq
     if tf is None:
         tf = sqrt(2*pi*abs(q[1]-q[0])/ddqm)
     qt = lambda t: q[0]+(q[1]-q[0])*(t/tf-sin(2*pi*t/tf)/(2*pi))
-    dqt = lambda t: (q[1]-q[0])*(1-cos(2*pi*t/tf))/tf
-    ddqt = lambda t: 2*pi*(q[1]-q[0])*sin(2*pi*t/tf)/(tf**2)
-    return ([qt, dqt, ddqt], tf)
+    dqt = lambda t: (q[1]-q[0])*(1-cos(2*pi*t/tf))/tf # derivative of q
+    ddqt = lambda t: 2*pi*(q[1]-q[0])*sin(2*pi*t/tf)/(tf**2) # 2nd derivative of q
+    return ([qt, dqt, ddqt], tf) # all of q and its derivatives are returned because they cannot be computed simply by using a different set of coefficients
 
+
+""" #@
+@name: compose_cycloidal
+@brief: returns the trajectory resulting from the composition of the cycloidal trajectories obtained from each couple of values in the specified path.
+@notes: given that the cycloidal trajectory cannot be represented with just a list of coefficients, the returned trajectory will be a list of function handles.
+@inputs: 
+- list[float] q: list of points in the path (the timimg law will be autogenerated);
+- float ddqm: maximum acceleration;
+@outputs: 
+- list[tuple[list[function], float]]: list of trajectory/cycloidal-duration tuples.
+@# """
 def compose_cycloidal(q:list[float], ddqm:float = 1.05) -> list[tuple[list[function], float]]:
     A = []
     for k in range(len(q)-1):
@@ -234,6 +301,19 @@ def compose_cycloidal(q:list[float], ddqm:float = 1.05) -> list[tuple[list[funct
         A.append(qk)
     return A
 
+
+""" #@
+@name: ik
+@brief: inverse kinematics of a 2Dofs planar manipulator
+@notes: it can compute the joint variables values even if the orientation of the end effector is not specified.
+@inputs: 
+- float x: x coordinate of the end effector;
+- float y: y coordinate of the end effector;
+- float theta: orientation of the end effector (angle of rotation relative to the z axis with theta=0 when the x axis of the end effector is aligned with the x axis of the base frame of reference);
+- dict[float] sizes: sizes of the two links that make up the manipulator, accessed via 'l1' and 'l2'; 
+@outputs: 
+- ndarray: column numpy array containing the values of the joint coordinates.
+@# """
 def ik(x:float, y:float, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2':0.25}) -> np.ndarray:
     if x**2+y**2 > (sizes['l1']+sizes['l2'])**2: return None
     q1 = 0
@@ -253,6 +333,16 @@ def ik(x:float, y:float, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2'
     q = np.array([[q1,q2]]).T
     return q
 
+""" #@
+@name: dk
+@brief: direct kinematics of a 2Dofs planar manipulator
+@notes: it can compute the x, y coordinates of the end effector and its orientation theta (angle of rotation relative to the z axis with theta=0 when the x axis of the end effector is aligned with the x axis of the base frame of reference)
+@inputs: 
+- ndarray q: colum numpy array containing the values of the joint coordinates;
+- dict[float] sizes: sizes of the two links that make up the manipulator, accessed via 'l1' and 'l2'; 
+@outputs: 
+- ndarray: column numpy array containing the values of the coordinates of the end effector (x, y and the rotation angle theta).
+@# """
 def dk(q:np.ndarray, sizes:dict[float] = {'l1':0.25,'l2':0.25})->np.ndarray:
     x = sizes['l1']*cos(q[0,0])+sizes['l2']*cos(q[0,0]+q[1,0])
     y = sizes['l1']*sin(q[0,0])+sizes['l2']*sin(q[0,0]+q[1,0])
