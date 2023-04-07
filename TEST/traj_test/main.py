@@ -72,7 +72,7 @@ def draw_traj(A:list[tuple[list[function], float]])-> None:
     ddqt = []
     total_time = 0
     for q,dt in A:
-        print(q[0](1))
+        #print(q[0](1))
         for t in rangef(0, 1e-2, dt):
             qt.append(q[0](t))
             dqt.append(q[1](t))
@@ -86,7 +86,7 @@ def draw_traj(A:list[tuple[list[function], float]])-> None:
     #plt.show()
     plt.savefig("./plot.png")
     plt.close()
-    print(A)
+    #print(A)
 
 if __name__ == "__main__":
     eel.init("./layout")
