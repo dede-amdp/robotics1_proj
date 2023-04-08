@@ -1,0 +1,15 @@
+.status {
+    height: 25px;
+    width: 25px;
+    background-color: #bbb;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status.online {
+    background: #00ff00;
+}
+
+.status.offline {
+    background: #ff0000;
+}

@@ -35,8 +35,8 @@ function abs2rel(x, y, settings) {
     return [x_p, y_p];
 }
 
-eel.expose(jsdraw_pose);
-function jsdraw_pose(q) {
+eel.expose(js_draw_pose);
+function js_draw_pose(q) {
     /*
         This method requires the existence of a global variable called `settings`, that is for this reason initialized at the start of this script.
         That object can be modified with the correct values in the main.js file if necessary
@@ -55,9 +55,4 @@ function jsdraw_pose(q) {
     ctx.lineTo(p2rel[0], p2rel[1]);
     ctx.stroke();
     ctx.closePath();
-}
-
-eel.expose(jslog);
-function jslog(msg) {
-    console.log(msg);
 }
