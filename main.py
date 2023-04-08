@@ -2,6 +2,8 @@ import eel
 import matplotlib.pyplot as plt
 import numpy as np
 from sys import stderr
+import sys
+from signal import signal, SIGINT
 
 from lib import trajpy as tpy
 from lib import serial_com as scm
@@ -21,6 +23,13 @@ web_options = {'host':'localhost', 'port':6969} # web server setup
 
 def print_error(*args, **kwargs):
     print(*args, file=stderr, **kwargs)
+
+def handle_closure(sig, frame):
+    print("Closing Serial...")
+    if settings['ser_started']:
+        scm.serial_close()
+        settings['ser_started'] = False
+    exit(1)
 
 def compute_trajectory(q_list: np.ndarray, ddqm=settings['acc_max']) -> tuple[list[tuple]]:
     q1 = tpy.compose_cycloidal([q[0] for q in q_list], ddqm) # trajectory of joint 1
@@ -66,7 +75,11 @@ def py_serial_online():
     return settings['ser_started']
 
 
+
+signal(SIGINT, handle_closure)
+
 if __name__ == "__main__":
+    global ser
     settings['ser_started'] = scm.ser_init()
     if not settings['ser_started']:
         print("No serial could be found, stopping the application.")
@@ -75,6 +88,4 @@ if __name__ == "__main__":
     eel.init("./layout") # initialize the view
     eel.start("./index.html", host=web_options['host'], port=web_options['port']) # start the server
 
-    if settings['ser_started']:
-        ser.flush()
-        ser.close()             # close port
+    serial_close() # once the server stops, close the serial
