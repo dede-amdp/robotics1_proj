@@ -1,12 +1,12 @@
-import eel
-import matplotlib.pyplot as plt
-import numpy as np
-from sys import stderr
-import sys
-from signal import signal, SIGINT
+import eel # GUI
+import matplotlib.pyplot as plt # needed for plotting
+import numpy as np # arrays
+from math import cos, sin, tan
+from sys import stderr # standard error stream
+from signal import signal, SIGINT # close the serial even if the server is forced to close
 
-from lib import trajpy as tpy
-from lib import serial_com as scm
+from lib import trajpy as tpy # trajectory library
+from lib import serial_com as scm # serial communication library
 
 settings = {
     'Tc' : 1e-3, # s
@@ -16,7 +16,7 @@ settings = {
 
 sizes = {
     'l1': 0.25,
-    'l2':0.25
+    'l2': 0.25
 }
 
 web_options = {'host':'localhost', 'port':6969} # web server setup
@@ -47,6 +47,38 @@ def send_data(msg_type: str, **data):
             #print(msg_str)
             scm.write_serial(msg_str)
 
+def trace_trajectory(q:tuple[list,list]):
+    pointsq1 = []
+    pointsq2 = []
+    q1 = q[0][:]
+    q2 = q[1][:]
+    n1 = len(q[0])
+    n2 = len(q[1])
+    # the trajectory may not last the same ampount of time:
+    # add data to the shortest trajectory to make them compatible
+    if n1 < n2:
+        for i in range(n1,n2):
+            q1.append(q1[-1])
+    else:
+        for i in range(n2,n1):
+            q2.append(q2[-1])
+    
+    for qt1, qt2 in zip(q1, q2):
+        x1 = cos(qt1)*sizes['l1']
+        y1 = sin(qt1)*sizes['l1']
+        x2 = x1+cos(qt1+qt2)*sizes['l2']
+        y2 = y1+sin(qt1+qt2)*sizes['l2']
+        pointsq1.append({'x':x1, 'y':y1})
+        pointsq2.append({'x':x2, 'y':y2})
+    
+    print(len(pointsq1)*1e-3)
+
+    eel.js_draw_traces(pointsq1, '#0000FF')
+    eel.js_draw_traces(pointsq2, '#00FF00')
+    eel.js_draw_pose([q[0][-1], q[1][-1]])
+    
+
+
 @eel.expose
 def py_log(msg):
     print(msg)
@@ -69,6 +101,7 @@ def py_get_data():
                 dq[i].append(traj[1](t)[0]) # compute the speed
                 ddq[i].append(traj[2](t)[0]) # compute the acceleration
     send_data('trj', q=q, dq=dq, ddq=ddq)
+    trace_trajectory(q)
 
 @eel.expose
 def py_serial_online():
@@ -88,4 +121,4 @@ if __name__ == "__main__":
     eel.init("./layout") # initialize the view
     eel.start("./index.html", host=web_options['host'], port=web_options['port']) # start the server
 
-    serial_close() # once the server stops, close the serial
+    scm.serial_close() # once the server stops, close the serial

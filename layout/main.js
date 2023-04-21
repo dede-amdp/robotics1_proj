@@ -7,8 +7,8 @@ const online_status = document.getElementById('status-dot');
 var points = []; // list of points -> end effector coordinates
 
 settings = {
-    'origin': { 'x': 0, 'y': input_canvas.height / 2 },
-    'm_p': 0.5 / input_canvas.width, // m/p 
+    'origin': { 'x': input_canvas.width / 2, 'y': input_canvas.height / 2 },
+    'm_p': 1 / input_canvas.width, // m/p -> meters per pixel conversion factor
     'l1': 0.25,
     'l2': 0.25
 };
@@ -63,13 +63,13 @@ function draw_background(color = '#EEEEEE', line = '#000000', limit = '#FF0000')
     ctx.beginPath();
     ctx.strokeStyle = limit;
     ctx.fillStyle = limit;
-    ctx.arc(0, input_canvas.height / 2, input_canvas.height / 4, 0, 2 * Math.PI);
+    ctx.arc(settings['origin']['x'], settings['origin']['y'], input_canvas.height / 4, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.closePath();
     ctx.beginPath();
     ctx.strokeStyle = limit;
     ctx.fillStyle = limit;
-    ctx.arc(0, input_canvas.height / 2, input_canvas.height / 2, 0, 2 * Math.PI);
+    ctx.arc(settings['origin']['x'], settings['origin']['y'], input_canvas.height / 2, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.closePath();
 }
