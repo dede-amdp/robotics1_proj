@@ -7,13 +7,17 @@
     <script type="text/javascript" src="/eel.js"></script>
     <script type="text/javascript" src="/cnv.js" defer></script>
     <script type="text/javascript" src="/main.js" defer></script>
+    <!--<script type="text/javascript" src="/p5.min.js" defer></script> -->
 </head>
 
 <body>
-    <h1>Hello, Trajectory Test :D</h1>
-    <canvas id="input_canvas" width="700" , height="700"></canvas><br>
-    <button id="send_data_btn">SEND DATA</button><br>
-    <div>Serial Status: <span class="status offline" id="status-dot"></span></div><br>
+    <!--<h1>Hello, Trajectory Test :D</h1>-->
+    <canvas id="input_canvas" width="700" , height="700"></canvas>
+    <button class="button-styled" id="line-btn">Line</button>
+    <button class="button-styled" id="circle-btn">Circle</button><br>
+    <button id="send_data_btn" class="button-styled">SEND DATA</button><br>
+    <div class="status-led">Serial Status: <span class="status offline" id="status-dot"></span></div><br>
+    <button id="start-serial-btn" class="button-styled">Start Serial Com</button><br>
 </body>
 
 </html>

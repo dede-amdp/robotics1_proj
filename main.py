@@ -36,6 +36,14 @@ def compute_trajectory(q_list: np.ndarray, ddqm=settings['acc_max']) -> tuple[li
     q2 = tpy.compose_cycloidal([q[1] for q in q_list], ddqm) # trajectory of joint 2
     return [q1, q2]
 
+def debug_plot(q, name="image"):
+    #print(q)
+    plt.figure()
+    plt.plot(q)
+    plt.grid(visible=True)
+    plt.savefig(name+'.png')
+
+
 def send_data(msg_type: str, **data):
     match msg_type:
         case 'trj':
@@ -85,29 +93,45 @@ def py_log(msg):
 
 @eel.expose
 def py_get_data():
-    data = eel.js_get_data()()
-    q_list = []
-    for point in data:
-        q_list.append(tpy.ik(point['x'], point['y'], None, sizes))
-    trajectories = compute_trajectory(q_list) # get the trajectory for each motor
-    q = ([], [])
-    dq = ([], [])
-    ddq = ([], [])
-    for i in range(2):
-        trajectory = trajectories[i]
-        for traj,dt in trajectory: # for each trajectory section in the trajectory of the i-th motor
-            for t in tpy.rangef(0, settings['Tc'], dt):
-                q[i].append(traj[0](t)[0]) # compute the position
-                dq[i].append(traj[1](t)[0]) # compute the speed
-                ddq[i].append(traj[2](t)[0]) # compute the acceleration
-    send_data('trj', q=q, dq=dq, ddq=ddq)
-    trace_trajectory(q)
+    try:
+        data = eel.js_get_data()()
+        if len(data) < 2: 
+            raise Exception("Not Enough Points to build a Trajectory")
+        q_list = []
+        for point in data:
+            q_list.append(tpy.ik(point['x'], point['y'], None, sizes))
+        # DEBUG
+        print(q_list)
+        for q1,q2 in q_list:
+            eel.js_draw_pose([q1[-1], q2[-1]])
+        # END DEBUG
+        trajectories = compute_trajectory(q_list) # get the trajectory for each motor
+        q = ([], [])
+        dq = ([], [])
+        ddq = ([], [])
+        for i in range(2):
+            trajectory = trajectories[i]
+            for traj,dt in trajectory: # for each trajectory section in the trajectory of the i-th motor
+                for t in tpy.rangef(0, settings['Tc'], dt):
+                    q[i].append(traj[0](t)[0]) # compute the position
+                    dq[i].append(traj[1](t)[0]) # compute the speed
+                    ddq[i].append(traj[2](t)[0]) # compute the acceleration
+        send_data('trj', q=q, dq=dq, ddq=ddq)
+        trace_trajectory(q)
+        # DEBUG
+        debug_plot(q[0], 'q1')
+        debug_plot(q[1], 'q2')
+        # END DEBUG
+    except:
+        pass # do not do anything if the given points are not enough for a trajectory
 
 @eel.expose
 def py_serial_online():
     return settings['ser_started']
 
-
+@eel.expose
+def py_serial_startup():
+    scm.ser_init()
 
 signal(SIGINT, handle_closure)
 

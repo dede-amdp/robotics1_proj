@@ -1,3 +1,7 @@
+*{
+    font-family: arial;
+}
+
 .status {
     height: 25px;
     width: 25px;
@@ -12,4 +16,31 @@
 
 .status.offline {
     background: #ff0000;
+}
+
+.button-styled {
+	background-color:#009999;
+	border-radius:28px;
+	border:1px solid #009999;
+	display:inline-block;
+	cursor:pointer;
+	color:#ffffff;
+	font-family:Arial;
+	font-size:17px;
+	padding:8px 15px;
+	text-decoration:none;
+	text-shadow:0px 1px 0px #007777;
+}
+.button-styled:hover {
+	background-color:#00AAAA;
+}
+.button-styled:active {
+	position:relative;
+	top:1px;
+}
+
+
+.status-led{
+    /*display:flex;*/
+    vertical-align: middle;
 }
