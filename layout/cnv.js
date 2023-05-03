@@ -37,12 +37,12 @@ function abs2rel(x, y, settings) {
     return [x_p, y_p];
 }
 
+
+/*
 eel.expose(js_draw_pose);
 function js_draw_pose(q) {
-    /*
-        This method requires the existence of a global variable called `settings`, that is for this reason initialized at the start of this script.
-        That object can be modified with the correct values in the main.js file if necessary
-     */
+    //    This method requires the existence of a global variable called `settings`, that is for this reason initialized at the start of this script.
+    //    That object can be modified with the correct values in the main.js file if necessary
     var draw_method = function(q){
         ctx.beginPath();
         ctx.strokeStyle = '#000000';
@@ -63,7 +63,9 @@ function js_draw_pose(q) {
 
     poses.push(new drawable(draw_method, data));
 }
+*/
 
+/*
 eel.expose(js_draw_traces);
 function js_draw_traces(points, color = "#FF0000") {
     var draw_method = function(points, color = "#FF0000") {
@@ -88,11 +90,27 @@ function js_draw_traces(points, color = "#FF0000") {
     var data = [points, color];
     traces.push(new drawable(draw_method,data));
 }
+*/
 
-
+/*
 class drawable{
     constructor(draw_method, data){
         this.draw = draw_method;
         this.data = data;
     }
+}
+*/
+
+eel.expose(js_draw_pose);
+function js_draw_pose(q) {
+    man.q = q;
+}
+
+eel.expose(js_draw_traces);
+function js_draw_traces(points) {
+    console.log(points);
+    for(var i = 0; i < points[0].length; i++){
+        man.add2trace([points[0][i], points[1][i]]);
+    }
+    console.log(man.traces)
 }

@@ -56,21 +56,21 @@ def send_data(msg_type: str, **data):
             scm.write_serial(msg_str)
 
 def trace_trajectory(q:tuple[list,list]):
-    pointsq1 = []
-    pointsq2 = []
+    # pointsq1 = []
+    # pointsq2 = []
     q1 = q[0][:]
     q2 = q[1][:]
     n1 = len(q[0])
     n2 = len(q[1])
-    # the trajectory may not last the same ampount of time:
+    # the trajectory may not last the same amount of time:
     # add data to the shortest trajectory to make them compatible
     if n1 < n2:
-        for i in range(n1,n2):
+        for _ in range(n1,n2):
             q1.append(q1[-1])
     else:
-        for i in range(n2,n1):
+        for _ in range(n2,n1):
             q2.append(q2[-1])
-    
+    '''
     for qt1, qt2 in zip(q1, q2):
         x1 = cos(qt1)*sizes['l1']
         y1 = sin(qt1)*sizes['l1']
@@ -84,7 +84,9 @@ def trace_trajectory(q:tuple[list,list]):
     eel.js_draw_traces(pointsq1, '#0000FF')
     eel.js_draw_traces(pointsq2, '#00FF00')
     eel.js_draw_pose([q[0][-1], q[1][-1]])
-    
+    '''
+    eel.js_draw_traces([q1, q2])
+    eel.js_draw_pose([q[0][-1], q[1][-1]])
 
 
 @eel.expose

@@ -9,10 +9,12 @@ const line_btn = document.getElementById('line-btn');
 const circle_btn = document.getElementById('circle-btn');
 var points = []; // list of points -> end effector coordinates
 //var to_draw = []; // list of drawable elements
-var traces = []; // list of drawable traces
-var poses = []; // list of drawable poses
+// var traces = []; // list of drawable traces
+// var poses = []; // list of drawable poses
+var man;
 var tool = line_tool;
 var dom_mouseX, dom_mouseY;
+
 
 settings = {
     'origin': { 'x': input_canvas.width / 2, 'y': input_canvas.height / 2 },
@@ -33,6 +35,7 @@ main();
 
 function main() {
     eel.py_serial_online()(serial_online);
+    man = new Manipulator([-Math.PI/2, -Math.PI/2], settings);
     draw_loop();
 }
 
@@ -66,11 +69,13 @@ function serial_online(is_online) {
 function draw_background(color = '#EEEEEE', line = '#000000', limit = '#FF0000') {
     ctx.beginPath();
     ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, input_canvas.clientWidth, input_canvas.clientHeight);
     ctx.closePath();
     ctx.beginPath();
     ctx.strokeStyle = line;
+    ctx.lineWidth = 1;
     ctx.fillStyle = line;
     ctx.moveTo(0, input_canvas.height / 2);
     ctx.lineTo(input_canvas.width, input_canvas.height / 2);
@@ -78,12 +83,14 @@ function draw_background(color = '#EEEEEE', line = '#000000', limit = '#FF0000')
     ctx.closePath();
     ctx.beginPath();
     ctx.strokeStyle = limit;
+    ctx.lineWidth = 1;
     ctx.fillStyle = limit;
     ctx.arc(settings['origin']['x'], settings['origin']['y'], input_canvas.height / 4, 0, 2 * Math.PI);
     ctx.stroke();
     ctx.closePath();
     ctx.beginPath();
     ctx.strokeStyle = limit;
+    ctx.lineWidth = 1;
     ctx.fillStyle = limit;
     ctx.arc(settings['origin']['x'], settings['origin']['y'], input_canvas.height / 2, 0, 2 * Math.PI);
     ctx.stroke();
@@ -110,8 +117,10 @@ function handle_input(e) {
     points.push({ 'actual': { 'x': rx, 'y': ry }, 'relative': { x, y } });
     //draw_point(x, y); // REMOVED FOR DEBUG PURPOSES
     // clear drawable elements
-    traces = [];
-    poses = [];
+    //traces = [];
+    //poses = [];
+
+    man.reset_trace();
 }
 
 function handle_data() {
@@ -147,8 +156,10 @@ function circle_tool(){
 function draw_loop(){
     draw_background();
     for(var p of points) draw_point(p['relative']['x'], p['relative']['y']);
-    for(var element of traces) element.draw(...element.data);
-    for(var element of poses) element.draw(...element.data);
+    man.draw_pose(ctx);
+    man.draw_traces(ctx);
+    //for(var element of traces) element.draw(...element.data);
+    //for(var element of poses) element.draw(...element.data);
     // draw the ui
     // these ui elements will be draw on top of everything else as long as the tool is used
     tool();
