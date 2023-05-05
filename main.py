@@ -8,6 +8,9 @@ from signal import signal, SIGINT # close the serial even if the server is force
 from lib import trajpy as tpy # trajectory library
 from lib import serial_com as scm # serial communication library
 
+
+import traceback
+
 settings = {
     'Tc' : 1e-3, # s
     'acc_max' : 1.05, # rad/s**2
@@ -43,6 +46,13 @@ def debug_plot(q, name="image"):
     plt.grid(visible=True)
     plt.savefig(name+'.png')
 
+def debug_plotXY(x, y, name="image"):
+    #print(q)
+    plt.figure()
+    plt.plot(x, y)
+    plt.grid(visible=True)
+    plt.savefig(name+'.png')
+
 
 def send_data(msg_type: str, **data):
     match msg_type:
@@ -56,37 +66,17 @@ def send_data(msg_type: str, **data):
             scm.write_serial(msg_str)
 
 def trace_trajectory(q:tuple[list,list]):
-    # pointsq1 = []
-    # pointsq2 = []
     q1 = q[0][:]
     q2 = q[1][:]
-    n1 = len(q[0])
-    n2 = len(q[1])
-    # the trajectory may not last the same amount of time:
-    # add data to the shortest trajectory to make them compatible
-    if n1 < n2:
-        for _ in range(n1,n2):
-            q1.append(q1[-1])
-    else:
-        for _ in range(n2,n1):
-            q2.append(q2[-1])
-    '''
-    for qt1, qt2 in zip(q1, q2):
-        x1 = cos(qt1)*sizes['l1']
-        y1 = sin(qt1)*sizes['l1']
-        x2 = x1+cos(qt1+qt2)*sizes['l2']
-        y2 = y1+sin(qt1+qt2)*sizes['l2']
-        pointsq1.append({'x':x1, 'y':y1})
-        pointsq2.append({'x':x2, 'y':y2})
-    
-    print(len(pointsq1)*1e-3)
-
-    eel.js_draw_traces(pointsq1, '#0000FF')
-    eel.js_draw_traces(pointsq2, '#00FF00')
-    eel.js_draw_pose([q[0][-1], q[1][-1]])
-    '''
     eel.js_draw_traces([q1, q2])
-    eel.js_draw_pose([q[0][-1], q[1][-1]])
+    eel.js_draw_pose([q1[-1], q2[-1]])
+
+    # DEBUG
+    x = [] # [tpy.dk([q1t, q2t]) for q1t, q2t in zip(q1, q2)]
+    for i in range(len(q1)):
+        x.append(tpy.dk(np.array([q1[i], q2[i]]).T))
+    debug_plotXY([xt[0] for xt in x], [yt[1] for yt in x], "xy")
+    # END DEBUG
 
 
 @eel.expose
@@ -103,28 +93,42 @@ def py_get_data():
         for point in data:
             q_list.append(tpy.ik(point['x'], point['y'], None, sizes))
         # DEBUG
-        print(q_list)
-        for q1,q2 in q_list:
-            eel.js_draw_pose([q1[-1], q2[-1]])
+        print("List of q points: ", q_list)
         # END DEBUG
         trajectories = compute_trajectory(q_list) # get the trajectory for each motor
         q = ([], [])
         dq = ([], [])
         ddq = ([], [])
-        for i in range(2):
-            trajectory = trajectories[i]
-            for traj,dt in trajectory: # for each trajectory section in the trajectory of the i-th motor
-                for t in tpy.rangef(0, settings['Tc'], dt):
-                    q[i].append(traj[0](t)[0]) # compute the position
-                    dq[i].append(traj[1](t)[0]) # compute the speed
-                    ddq[i].append(traj[2](t)[0]) # compute the acceleration
+        for i in range(len(trajectories[0])):
+            traj1, dt1 = trajectories[0][i] # first motor trajectory
+            traj2, dt2 = trajectories[1][i] # second motor trajectory
+            for t in tpy.rangef(0, settings['Tc'], max(dt1, dt2)):
+                if t <= dt1:
+                    q[0].append(traj1[0](t))
+                    dq[0].append(traj1[1](t))
+                    ddq[0].append(traj1[2](t))
+                else:
+                    q[0].append(q[0][-1])
+                    dq[0].append(dq[0][-1])
+                    ddq[0].append(ddq[0][-1])
+                if t <= dt2:
+                    q[1].append(traj2[0](t))
+                    dq[1].append(traj2[1](t))
+                    ddq[1].append(traj2[2](t))
+                else:
+                    q[1].append(q[1][-1])
+                    dq[1].append(dq[1][-1])
+                    ddq[1].append(ddq[1][-1])
+
         send_data('trj', q=q, dq=dq, ddq=ddq)
         trace_trajectory(q)
         # DEBUG
         debug_plot(q[0], 'q1')
         debug_plot(q[1], 'q2')
         # END DEBUG
-    except:
+    except Exception as e:
+        print(e)
+        print(traceback.format_exc())
         pass # do not do anything if the given points are not enough for a trajectory
 
 @eel.expose

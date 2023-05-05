@@ -15,14 +15,6 @@ class Manipulator{
         return // it cannot be modified directly
     }
 
-    /*get q(){
-        return this.q_coords;
-    }
-
-    get eef(){
-        return this.end_eff;//{'x': this.end_eff[0], 'y': this.end_eff[1]};
-    }*/
-
     add2trace(q){
         var x1, x2;
         [x1, x2] = this.dk(q);
@@ -88,5 +80,102 @@ class Manipulator{
         var p1rel = abs2rel(p1[0], p1[1], settings); // intermediate point position
         var p2rel = abs2rel(p2[0], p2[1], settings); // end effector position
         return [p1rel, p2rel];
+    }
+}
+
+class Point{
+    constructor(x, y, settings){
+        this.settings = settings;
+        this.relative = {x, y};
+        var rx, ry;
+        [rx, ry] = rel2abs(x, y, settings);
+        this.actual = {'x':rx, 'y': ry};
+    }
+
+    set relX(x){
+        this.relative.x = x;
+        var rx, ry;
+        [rx, ry] = rel2abs(this.relX, this.relY, this.settings);
+        this.actual = {'x':rx, 'y': ry};
+    }
+
+    get relX(){
+        return this.relative.x;
+    }
+
+    set relY(y){
+        this.relative.y = y;
+        var rx, ry;
+        [rx, ry] = rel2abs(this.relX, this.relY, this.settings);
+        this.actual = {'x':rx, 'y': ry};
+    }
+
+    get actX(){
+        return this.actual.x;
+    }
+
+    get actY(){
+        return this.actual.y;
+    }
+
+    set actX(x){
+        this.actual.x = x;
+        var rx, ry;
+        [rx, ry] = abs2rel(this.actX, this.actY, this.settings);
+        this.relative = {'x':rx, 'y': ry};
+    }
+
+    set actY(y){
+        this.actual.y = y;
+        var rx, ry;
+        [rx, ry] = abs2rel(this.actX, this.actY, this.settings);
+        this.relative = {'x':rx, 'y': ry};
+    }
+
+    get relY(){
+        return this.relative.y;
+    }
+
+    add(other){
+        var result = new Point(this.relX, this.relY, this.settings);
+        result.relX = result.relX+other.relX;
+        result.relY = result.relY+other.relY;
+        return result;
+    }
+
+    sub(other){
+        var result = new Point(this.relX, this.relY, this.settings);
+        result.relX = result.relX-other.relX;
+        result.relY = result.relY-other.relY;
+        return result;
+    }
+
+    mag(){
+        return Math.sqrt(this.relX*this.relX+this.relY*this.relY);
+    }
+
+    scale(scalar){
+        var result = new Point(0, 0, this.settings);
+        //result.relX = scalar*result.relX;
+        //result.relY = scalar*result.relY;
+        var rho = scalar*this.mag();
+        var theta = Math.atan2(this.relY, this.relX);
+        result.relX = rho*Math.cos(theta);
+        result.relY = rho*Math.sin(theta);
+        return result;
+    }
+}
+
+class Trajectory{
+    constructor(){
+        this.data = [];
+    }
+
+    add_line(p0, p1, raised){
+        this.data.push({'type':'line', 'data':[p0, p1, raised]}) // start and end point
+    }
+
+    add_circle(p0, r, arc, raised){
+        this.data.push({'type':'circle', 'data': [p0, r, arc, raised]}) // point and diameter
     }
 }
