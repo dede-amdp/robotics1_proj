@@ -45,6 +45,7 @@ def debug_plot(q, name="image"):
     plt.plot(q)
     plt.grid(visible=True)
     plt.savefig(name+'.png')
+    plt.close()
 
 def debug_plotXY(x, y, name="image"):
     #print(q)
@@ -52,6 +53,7 @@ def debug_plotXY(x, y, name="image"):
     plt.plot(x, y)
     plt.grid(visible=True)
     plt.savefig(name+'.png')
+    plt.close()
 
 
 def send_data(msg_type: str, **data):

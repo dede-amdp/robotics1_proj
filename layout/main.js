@@ -50,10 +50,50 @@ function js_log(msg) {
 eel.expose(js_get_data);
 function js_get_data() {
     var temp = [];
+    // add to temp 
+    for(var t of traj.data){
+        if(t.type == 'line'){
+            const linef = function(s, data) {
+                // (y-yb)/(ya-yb) = (x-xb)/(xa-xb)
+                // m = (dy/dx)
+                // y = m*x +yb-mxb
+                var a,b, l;
+                a = data[0];
+                b = data[1];
+                l = b.sub(a);
+                return a.add(l.scale(s/l.mag()));
+            };
+            for(var s = 0; s <= 1; s+=0.01){
+                temp.push(linef(s, t.data).actual);
+            }
+        }else if(t.type == 'circle'){
+            const circf = function(theta, data){
+                var r = data[1];
+                var c = data[0];
+                var p = new Point(
+                    r*Math.cos(theta),
+                    r*Math.sin(theta),
+                    settings
+                );
+                return c.add(p);
+            };
+            var theta_0, theta_1;
+            theta_0 = t.data[2];
+            theta_1 = t.data[3];
+            for(var theta = theta_0; theta <= theta_1; theta+=0.01){
+                temp.push(circf(theta, t.data).actual);
+                theta %= 2*Math.PI;
+            }
+        }
+    }
+
+    /*
     for (var p of points) {
         temp.push(p.actual);
     }
+    */
     points = []; //empty the array
+    traj.reset();
     draw_background(); // REMOVED FOR DEBUG PURPOSES
     return temp;
 }

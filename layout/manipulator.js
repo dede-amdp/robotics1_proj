@@ -201,6 +201,10 @@ class Trajectory{
         this.data.push({'type':'circle', 'data': [c, r, theta_0, theta_1, raised]}) // point and diameter
     }
 
+    reset(){
+        this.data = [];
+    }
+
     draw(ctx){
         for(var traj of this.data){
             if(traj.type == 'line'){
