@@ -164,6 +164,28 @@ class Point{
         result.relY = rho*Math.sin(theta);
         return result;
     }
+
+    rot(delta){
+        var result = new Point(0, 0, this.settings);
+        var rho = this.mag();
+        var theta = Math.atan2(this.relY, this.relX) + delta;
+        result.relX = rho*Math.cos(theta);
+        result.relY = rho*Math.sin(theta);
+        return result;
+    }
+
+    set(scalar){
+        var result = new Point(0, 0, this.settings);
+        var rho = scalar;
+        var theta = Math.atan2(this.relY, this.relX);
+        result.relX = rho*Math.cos(theta);
+        result.relY = rho*Math.sin(theta);
+        return result;
+    }
+
+    angle(){
+        return Math.atan2(this.relY, this.relX);
+    }
 }
 
 class Trajectory{
@@ -175,7 +197,35 @@ class Trajectory{
         this.data.push({'type':'line', 'data':[p0, p1, raised]}) // start and end point
     }
 
-    add_circle(p0, r, arc, raised){
-        this.data.push({'type':'circle', 'data': [p0, r, arc, raised]}) // point and diameter
+    add_circle(c, r, theta_0, theta_1, raised){
+        this.data.push({'type':'circle', 'data': [c, r, theta_0, theta_1, raised]}) // point and diameter
+    }
+
+    draw(ctx){
+        for(var traj of this.data){
+            if(traj.type == 'line'){
+                ctx.beginPath();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#000000";
+                ctx.moveTo(traj.data[0].relX, traj.data[0].relY);
+                ctx.lineTo(traj.data[1].relX, traj.data[1].relY);
+                ctx.stroke();
+                ctx.closePath();
+            }else if(traj.type == 'circle'){
+                var c, r, theta_0, theta_1;
+                c = traj.data[0];
+                r = traj.data[1];
+                theta_0 = traj.data[2];
+                theta_1 = traj.data[3];
+                ctx.beginPath();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#000000";
+                var cw = Math.abs(theta_1-theta_0) < Math.PI && (theta_1 > theta_0); // clockwise
+                ctx.arc(c.relX, c.relY, r, theta_0, theta_1, !cw)
+
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
     }
 }

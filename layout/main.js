@@ -50,10 +50,8 @@ function js_log(msg) {
 eel.expose(js_get_data);
 function js_get_data() {
     var temp = [];
-    //console.log("SENT DATA:");
     for (var p of points) {
         temp.push(p.actual);
-        //console.log(p);
     }
     points = []; //empty the array
     draw_background(); // REMOVED FOR DEBUG PURPOSES
@@ -129,53 +127,16 @@ function find_circ(){
     var r = k.sub(a).mag()/2;
     var c = a.add(k.sub(a).scale(0.5))
 
-    var x_a = a.relX;
-    var y_a = a.relY;
-    var x_b = b.relX;
-    var y_b = b.relY;
-    var x_c = c.relX;
-    var y_c = c.relY;
-
-    var dx = x_a-x_b;
-    var dy = y_a-y_b;
-    
-    var m = dy/dx;
-    var q = y_b-m*x_b;
-
-    // (x-x_c)^2+(y-y_c)^2 = r^2
-    // y = mx+q
-
-    var A = 1 + m*m;
-    var B = 2*m*q - 2*x_c - 2*m*y_c;
-    var C = x_c*x_c + y_c*y_c + q*q - r*r - 2*q*y_c;
-
-    // Ax^2+Bx+C = 0 
-
-    console.log(m,y_b, x_b,A, B, C);
-
-    var delta = B*B-4*A*C;
-    if(delta <= 0){
-        // TODO: SHOW RED CIRCUMFERENCE -> potrebbe non essere qui che va implementato
-    }
-
-    var x1 = (-B+Math.sqrt(delta))/2*A;
-    var y1 = m*x1+q;
-    var x2 = (-B-Math.sqrt(delta))/2*A;
-    var y2 = m*x2+q;
-
-    console.log(a, x1,y1,x2,y2);
-
-    if(x1 == a.relX && y1 == a.relY) p = new Point(x2, y2, settings);
-    else p = new Point(x1, y1, settings);
-
-    console.log(p);
+    p = c.add(b.sub(c).set(r));
 
     var v1 = c.sub(a);
     var v2 = c.sub(p);
-    // use a and p to find the angle
-    arc = Math.acos((v1.relX*v2.relX+v1.relY*v2.relY)/(v1.mag()*v2.mag()));
+    //arc = Math.acos((v1.relX*v2.relX+v1.relY*v2.relY)/(v1.mag()*v2.mag()));
 
-    return [a, p, r, arc];
+    var theta_0 = v1.angle()+Math.PI;
+    var theta_1 = v2.angle()+Math.PI;
+
+    return [c, p, r, theta_0, theta_1];
 }
 
 function handle_input(e) {
@@ -192,7 +153,9 @@ function handle_input(e) {
     if(tool == line_tool){
         circle_definition = []; // empty the circle_definition array to avoid having problems when the circle tool is selected afterwards
         points.push(new Point(x,y, settings));
-        if(n > 0) traj.add_line(points[n-2], points[n-1], 0);
+        n +=1;
+        if(n > 1) traj.add_line(points[n-2], points[n-1], 0);
+        //if(n == 0) traj.add_line(null, points[n-1], 0);
     }else
     if(tool == circle_tool){
         if(n == 0){
@@ -201,9 +164,9 @@ function handle_input(e) {
         else{
             circle_definition.push(new Point(x,y, settings))
             if(circle_definition.length == 2){
-                var a, p, r, arc;
-                [a, p, r, arc] = find_circ();
-                traj.add_circle(a, r, arc, 0);
+                var c, p, r, theta_0, theta_1;
+                [c, p, r, theta_0, theta_1] = find_circ();
+                traj.add_circle(c, r, theta_0, theta_1, 0);
                 points.push(p);
                 circle_definition = [];
             }
@@ -270,7 +233,7 @@ function circle_tool(){
             ctx.beginPath();
             ctx.strokeStyle = "#00000077";
             ctx.lineWidth = 3;
-            ctx.moveTo(a.relX, a.relY);
+            ctx.moveTo(c.relX, c.relY);
             ctx.lineTo(b.relX, b.relY);
             ctx.stroke();
             ctx.closePath();
@@ -285,6 +248,7 @@ function circle_tool(){
 function draw_loop(){
     draw_background();
     for(var p of points) draw_point(p.relative['x'], p.relative['y']);
+    traj.draw(ctx);
     man.draw_pose(ctx);
     man.draw_traces(ctx);
     // draw the ui
