@@ -221,11 +221,16 @@ class Trajectory{
                 r = traj.data[1];
                 theta_0 = traj.data[2];
                 theta_1 = traj.data[3];
+                var A, B, ccw;
+                A = theta_0>theta_1;
+                B = Math.abs(theta_1-theta_0) < Math.PI;
+                ccw = (!A&&!B)||(A&&B); // xand 
                 ctx.beginPath();
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = "#000000";
-                var cw = Math.abs(theta_1-theta_0) < Math.PI && (theta_1 > theta_0); // clockwise
-                ctx.arc(c.relX, c.relY, r, theta_0, theta_1, !cw)
+                //var cw = Math.abs(theta_1-theta_0) < Math.PI && (theta_1 > theta_0); // clockwise
+                //ctx.arc(c.relX, c.relY, r, theta_0, theta_1, !cw)
+                ctx.arc(c.relX, c.relY, r, theta_0, theta_1, ccw); // TODO CORRECT THE WAY CIRCLES ARE DRAW
 
                 ctx.stroke();
                 ctx.closePath();

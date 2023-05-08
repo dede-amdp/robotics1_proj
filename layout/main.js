@@ -54,44 +54,46 @@ function js_get_data() {
     for(var t of traj.data){
         if(t.type == 'line'){
             const linef = function(s, data) {
-                // (y-yb)/(ya-yb) = (x-xb)/(xa-xb)
-                // m = (dy/dx)
-                // y = m*x +yb-mxb
+                // p = pi+(pf-pi)*s, s in [0,...,1]
                 var a,b, l;
                 a = data[0];
                 b = data[1];
                 l = b.sub(a);
-                return a.add(l.scale(s/l.mag()));
+                return a.add(l.scale(s));
             };
             for(var s = 0; s <= 1; s+=0.01){
                 temp.push(linef(s, t.data).actual);
             }
         }else if(t.type == 'circle'){
-            const circf = function(theta, data){
-                var r = data[1];
+            const circf = function(s, data){
                 var c = data[0];
+                var r = data[1];
+                var theta_0 = data[2];
+                var theta_1 = data[3];
+                var d = -Math.abs(theta_1-theta_0);
+                var A, B, ccw;
+                A = theta_0 >theta_1;
+                B = Math.abs(theta_1-theta_0)<Math.PI;
+                ccw = (!A&&!B)||(A&&B);
+                if (!ccw) d *= -1; // clockwise
+                var sd = theta_0+d*s;
+                sd = sd >= 0 ? sd : 2*Math.PI+sd;
+                sd = sd <= 2*Math.PI ? sd : sd-2*Math.PI;
+                // DEBUG
+                // console.log(theta_0, theta_1, sd);
+                // END DEBUG
                 var p = new Point(
-                    r*Math.cos(theta),
-                    r*Math.sin(theta),
+                    r*Math.cos(sd),
+                    r*Math.sin(sd),
                     settings
                 );
                 return c.add(p);
             };
-            var theta_0, theta_1;
-            theta_0 = t.data[2];
-            theta_1 = t.data[3];
-            for(var theta = theta_0; theta <= theta_1; theta+=0.01){
-                temp.push(circf(theta, t.data).actual);
-                theta %= 2*Math.PI;
+            for(var s = 0; s <= 1; s+=0.01){
+                temp.push(circf(s, t.data).actual);
             }
         }
     }
-
-    /*
-    for (var p of points) {
-        temp.push(p.actual);
-    }
-    */
     points = []; //empty the array
     traj.reset();
     draw_background(); // REMOVED FOR DEBUG PURPOSES
@@ -183,13 +185,14 @@ function handle_input(e) {
     var boundary = e.target.getBoundingClientRect();
     var x = e.clientX - boundary.left;
     var y = e.clientY - boundary.top;
+    if(x <input_canvas.width/2) return;
+    if(Math.pow(x-settings.origin.x, 2)+Math.pow(y-settings.origin.y, 2) > Math.pow(input_canvas.height/2,2)) return;
     //var rx, ry;
     //[rx, ry] = rel2abs(x, y, settings);
     // add points to the list
     //points.push({ 'actual': { 'x': rx, 'y': ry }, 'relative': { x, y } });
     //draw_point(x, y); // REMOVED FOR DEBUG PURPOSES
     var n = points.length;
-    // TODO: ADD TRAJECTORY TO traj
     if(tool == line_tool){
         circle_definition = []; // empty the circle_definition array to avoid having problems when the circle tool is selected afterwards
         points.push(new Point(x,y, settings));

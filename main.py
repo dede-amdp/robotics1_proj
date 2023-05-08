@@ -95,7 +95,7 @@ def py_get_data():
         for point in data:
             q_list.append(tpy.ik(point['x'], point['y'], None, sizes))
         # DEBUG
-        print("List of q points: ", q_list)
+        # print("List of q points: ", q_list)
         # END DEBUG
         trajectories = compute_trajectory(q_list) # get the trajectory for each motor
         q = ([], [])

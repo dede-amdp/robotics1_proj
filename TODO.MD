@@ -7,7 +7,9 @@
 * [x] wryyyyyyyyyyyyyyyyyyyy;
 * [ ] refactor and comment;
 * [x] add to point class add and sub method to implement line and circle trajectories;
-* [ ] solve why sometimes a some trajectories are ignored;
+* [x] solve why sometimes some trajectories are ignored;
+* [x] TODOS in main.js and manipulator.js;
+* [ ] solve bug that adds random circumferences sometimes :/
 
 
 * [ ] reimplement the spline3 method to use the final time formula from the cycloidal trajectory;
