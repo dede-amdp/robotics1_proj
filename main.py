@@ -34,15 +34,16 @@ def handle_closure(sig, frame):
         settings['ser_started'] = False
     exit(1)
 
-def compute_trajectory(q_list: np.ndarray, ddqm=settings['acc_max']) -> tuple[list[tuple]]:
-    q1 = tpy.compose_cycloidal([q[0] for q in q_list], ddqm) # trajectory of joint 1
-    q2 = tpy.compose_cycloidal([q[1] for q in q_list], ddqm) # trajectory of joint 2
+def compute_trajectory(q_list: np.ndarray, method = tpy.compose_cycloidal, ddqm=settings['acc_max']) -> tuple[list[tuple]]:
+    q1 = method([q[0] for q in q_list], ddqm) # trajectory of joint 1
+    q2 = method([q[1] for q in q_list], ddqm) # trajectory of joint 2
     return [q1, q2]
 
 def debug_plot(q, name="image"):
     #print(q)
     plt.figure()
-    plt.plot(q)
+    t = [i*settings['Tc'] for i in range(len(q))]
+    plt.plot(t, q)
     plt.grid(visible=True)
     plt.savefig(name+'.png')
     plt.close()
@@ -97,7 +98,7 @@ def py_get_data():
         # DEBUG
         # print("List of q points: ", q_list)
         # END DEBUG
-        trajectories = compute_trajectory(q_list) # get the trajectory for each motor
+        trajectories = compute_trajectory(q_list, tpy.compose_spline3) # get the trajectory for each motor
         q = ([], [])
         dq = ([], [])
         ddq = ([], [])
@@ -126,7 +127,11 @@ def py_get_data():
         trace_trajectory(q)
         # DEBUG
         debug_plot(q[0], 'q1')
+        debug_plot(dq[0], 'dq1')
+        debug_plot(ddq[0], 'ddq1')
         debug_plot(q[1], 'q2')
+        debug_plot(dq[1], 'dq2')
+        debug_plot(ddq[1], 'ddq2')
         # END DEBUG
     except Exception as e:
         print(e)

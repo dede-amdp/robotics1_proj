@@ -1,7 +1,7 @@
 # TODO:
 
 * [x] add circle tool;
-* [ ] add third trajectory;
+* [x] add third trajectory;
 * [x] add slicing trajectory -> from line and circle, create set of points;
 * [x] solve "trajectory not going where it should" problem;
 * [x] wryyyyyyyyyyyyyyyyyyyy;
@@ -12,4 +12,6 @@
 * [ ] solve bug that adds random circumferences sometimes :/
 
 
-* [ ] reimplement the spline3 method to use the final time formula from the cycloidal trajectory;
+* [x] reimplement the spline3 method to use the final time formula from the cycloidal trajectory;
+* [ ] solve bug with spline3 that ignores last trajectory segment
+* [ ] Maybe make cycloidal trajectory continuous instead og making it go to zero every time?

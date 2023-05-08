@@ -18,7 +18,8 @@ settings = {
     'origin': { 'x': input_canvas.width / 2, 'y': input_canvas.height / 2 },
     'm_p': 1 / input_canvas.width, // m/p -> meters per pixel conversion factor
     'l1': 0.25,
-    'l2': 0.25
+    'l2': 0.25,
+    's_step': 0.1
 };
 
 input_canvas.addEventListener('click', handle_input);
@@ -61,7 +62,7 @@ function js_get_data() {
                 l = b.sub(a);
                 return a.add(l.scale(s));
             };
-            for(var s = 0; s <= 1; s+=0.01){
+            for(var s = 0; s <= 1; s+=settings['s_step']){
                 temp.push(linef(s, t.data).actual);
             }
         }else if(t.type == 'circle'){
@@ -89,7 +90,7 @@ function js_get_data() {
                 );
                 return c.add(p);
             };
-            for(var s = 0; s <= 1; s+=0.01){
+            for(var s = 0; s <= 1; s+=settings['s_step']){
                 temp.push(circf(s, t.data).actual);
             }
         }

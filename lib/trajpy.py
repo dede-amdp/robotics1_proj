@@ -44,23 +44,44 @@ where q is the position spline, dq is the velocity spline and ddq is the acceler
 @outputs: 
 - ndarray : numpy array of the coefficients of the 3rd order polynomial that crosses the specified points.
 @# """
+
+'''
 def spline3(q: list[point_time], dq: list[point_time])->np.ndarray: #, ddq: list[point_time])-> list:
-    '''
-    q = a0+a1t+a2t2+a3t3
-    dq = a1+2a2t+3a3t2
-    ddq = 2a2+6a3t
-    '''
+    
+    # q = a0+a1t+a2t2+a3t3
+    # dq = a1+2a2t+3a3t2
+    # ddq = 2a2+6a3t
+
     vandermont = []
     for point in q:
         vandermont.append(time_row(point[1],3,0))
     for point in dq:
         vandermont.append(time_row(point[1],3,1))
-    '''for point in ddq:
-        vandermont.append(time_row(point[1],3,2))'''
     known_terms = [[point[0]] for point in q+dq] #+ddq]
     A = np.array(vandermont) 
     b = np.array(known_terms) 
     return np.dot(np.linalg.inv(A), b)
+'''
+
+def spline3(q: list[point_time], dq: list[point_time]) -> list[function]:
+    # q = a0+a1t+a2t2+a3t3
+    # dq = a1+2a2t+3a3t2
+    # ddq = 2a2+6a3t
+    data = []
+    for p in q:
+        data.append(time_row(p[1], 3, 0))
+    for p in dq:
+        data.append(time_row(p[1], 3, 1))
+    known_terms = [float(p[0]) for p in q+dq]
+    A = np.array(data)
+    b = np.array(known_terms).T
+    a = np.dot(np.linalg.inv(A), b)
+    return [
+        lambda t: float(np.dot(a, np.array(time_row(t,3,0)))),
+        lambda t: float(np.dot(a, np.array(time_row(t,3,1)))),
+        lambda t: float(np.dot(a, np.array(time_row(t,3,2))))
+    ]
+
 
 
 """ #@
@@ -133,6 +154,8 @@ def rangef(start:float=0, step:float=1, end:float=0, consider_limit:bool = False
 @outputs: 
 - list[tuple[ndarray, float]] :  list of coefficients/spline-duration tuples.
 @# """
+
+'''
 def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list[float]=None)->list[tuple[np.ndarray, float]]:
     q = preprocess(q)
     A = []
@@ -154,6 +177,25 @@ def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list[float]=None)->lis
         a = spline3([(qi,0), (qj, dt)], [(dqs[i], 0), (dqs[i+1], dt)])
         A.append((a.T, dt))
     return A
+'''
+
+def compose_spline3(q: list[float], ddqm: float = 1.05, dts:list[float]= None) -> list[tuple[list[function], float]]:
+    trajectory = []
+    if dts is None:
+        # compute the duration of each polynomial
+        dts = []
+        for q1, q0 in zip(q[:len(q)-1], q[1:]):
+            dts.append(sqrt(2*pi*abs(q1-q0)/ddqm))
+        dq = cubic_speeds(q, dts) #*0 #cubic_speeds(q, dts)
+        for q0, q1, dq0, dq1, dt in zip(q[:len(q)-1], q[1:], dq[:len(dq)], dq[1:], dts):
+            q0_point = (q0, 0)
+            q1_point = (q1, dt)
+            dq0_point = (dq0, 0)
+            dq1_point = (dq1, dt)
+            polys = spline3([q0_point, q1_point], [dq0_point, dq1_point])
+            trajectory.append((polys, dt))
+    return trajectory
+
 
 """ #@
 @name: cubic_speeds
@@ -164,13 +206,14 @@ def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list[float]=None)->lis
 @outputs: 
 - list[float]: list of intermediate speeds.
 @# """
+'''
 def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
     if len(q) < 3 : return [0, 0]
     A = np.zeros((len(q)-2, len(q)-2))
     c = np.zeros((len(q)-2, 1))
     for i in range(len(q)-2):
         A[i,i] += 2*(dts[i]+dts[i+1])
-        if i+1 < A.m:
+        if i+1 < A.shape[1]:
             A[i, i+1] += dts[i] 
         if i-1 >= 0:
             A[i, i-1] += dts[i+1]
@@ -182,6 +225,23 @@ def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
     # the initial and final values of the speeds are not summed because they are 0
     dq = np.dot(np.linalg.inv(A), c)
     return [0]+dq.T.tolist()[0]+[0]
+'''
+
+def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
+    if len(q) == 2 : return [0, 0]
+    A = np.zeros((len(q)-2, len(q)-2))
+    c = np.zeros((len(q)-2, 1))
+    dqs = [q1-q0 for q0, q1 in zip(q[:len(q)-1], q[1:])]
+    ck = lambda k : 3*(dts[k]**2*dqs[k+1]+ dts[k+1]**2*dqs[k])/(dts[k]*dts[k+1])
+    for i in range(len(q)-2):
+        A[i,i] = 2*(dts[i+1]+dts[i])
+        if i+1 < len(q)-2 : A[i, i+1] = dts[i]
+        if i-1 >= 0 : A[i, i-1] = dts[i+1]
+
+        if i+2 < len(q)-2 : c[i] = ck(i+1)
+    
+    v = np.dot(np.linalg.inv(A), c)
+    return v.T.tolist()[0]
 
 
 """ #@
