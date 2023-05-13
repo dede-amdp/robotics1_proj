@@ -9,9 +9,10 @@
 * [x] add to point class add and sub method to implement line and circle trajectories;
 * [x] solve why sometimes some trajectories are ignored;
 * [x] TODOS in main.js and manipulator.js;
-* [ ] solve bug that adds random circumferences sometimes :/
+* [-> not a bug] solve bug that adds random circumferences sometimes :/
 
 
 * [x] reimplement the spline3 method to use the final time formula from the cycloidal trajectory;
-* [ ] solve bug with spline3 that ignores last trajectory segment
+* [x] solve bug with spline3 that ignores last trajectory segment
+* [ ] solve bug with circumferences when slicing it;
 * [ ] Maybe make cycloidal trajectory continuous instead og making it go to zero every time?

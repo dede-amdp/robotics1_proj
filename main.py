@@ -13,7 +13,7 @@ import traceback
 
 settings = {
     'Tc' : 1e-3, # s
-    'acc_max' : 1.05, # rad/s**2
+    'acc_max' : 1.05, #1.05, # rad/s**2
     'ser_started': False
 }
 
@@ -34,10 +34,11 @@ def handle_closure(sig, frame):
         settings['ser_started'] = False
     exit(1)
 
-def compute_trajectory(q_list: np.ndarray, method = tpy.compose_cycloidal, ddqm=settings['acc_max']) -> tuple[list[tuple]]:
+def compute_trajectory(q_list: np.ndarray, method = tpy.compose_cycloidal, ddqm=settings['acc_max']) -> list[list[tuple]]:
     q1 = method([q[0] for q in q_list], ddqm) # trajectory of joint 1
     q2 = method([q[1] for q in q_list], ddqm) # trajectory of joint 2
-    return [q1, q2]
+    q3 = [q[2] for q in q_list] # pen up or pen down ?
+    return [q1, q2, q3]
 
 def debug_plot(q, name="image"):
     #print(q)
@@ -94,17 +95,22 @@ def py_get_data():
             raise Exception("Not Enough Points to build a Trajectory")
         q_list = []
         for point in data:
-            q_list.append(tpy.ik(point['x'], point['y'], None, sizes))
+            # point contains also the information about the z axis
+            # it might be better to handle it in the firmware so that when the next point has z = 1
+            # the robot can stop in place and move up if it is not already up,
+            # or down when it arrives to z = 0 if it is not already down
+            q_list.append(tpy.ik(point['x'], point['y'], point['z'], None, sizes))
         # DEBUG
         # print("List of q points: ", q_list)
         # END DEBUG
-        trajectories = compute_trajectory(q_list, tpy.compose_spline3) # get the trajectory for each motor
-        q = ([], [])
-        dq = ([], [])
-        ddq = ([], [])
+        trajectories = compute_trajectory(q_list)#, tpy.compose_trapezoidal)#tpy.compose_spline3) # get the trajectory for each motor
+        q = ([], [], [])    # q(t) for each motor
+        dq = ([], [])       # dq(t) for each motor (aside from the third one) 
+        ddq = ([], [])      # ssq(t) for each motor (aside for the third one)
         for i in range(len(trajectories[0])):
             traj1, dt1 = trajectories[0][i] # first motor trajectory
             traj2, dt2 = trajectories[1][i] # second motor trajectory
+            # compute for each trajectory q(t), dq(t) and ddq(t) with a time step of Tc
             for t in tpy.rangef(0, settings['Tc'], max(dt1, dt2)):
                 if t <= dt1:
                     q[0].append(traj1[0](t))
@@ -122,7 +128,9 @@ def py_get_data():
                     q[1].append(q[1][-1])
                     dq[1].append(dq[1][-1])
                     ddq[1].append(ddq[1][-1])
-
+                q[2].append(trajectories[2][i+1]) # pen up or down (3rd motor trajectory)
+                # i+1 because the first value is "useless", 
+                # the firmware will raise or lower the pen depending on the next point
         send_data('trj', q=q, dq=dq, ddq=ddq)
         trace_trajectory(q)
         # DEBUG
@@ -140,7 +148,7 @@ def py_get_data():
 
 @eel.expose
 def py_serial_online():
-    return settings['ser_started']
+    return settings['ser_started'] # return whether the serial is started or not
 
 @eel.expose
 def py_serial_startup():

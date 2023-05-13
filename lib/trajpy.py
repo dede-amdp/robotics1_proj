@@ -1,6 +1,7 @@
 from math import sqrt,atan2,cos,sin,pi,acos
 import numpy as np
 from typing import Callable
+from scipy.interpolate import CubicSpline
 
 point_time = tuple[float, float] # point_time type for type annotation
 function = Callable[[float], float] # function handle type for type annotation
@@ -179,6 +180,7 @@ def compose_spline3(q:list[float], ddqm:float = 1.05, dts:list[float]=None)->lis
     return A
 '''
 
+#'''
 def compose_spline3(q: list[float], ddqm: float = 1.05, dts:list[float]= None) -> list[tuple[list[function], float]]:
     trajectory = []
     if dts is None:
@@ -195,6 +197,31 @@ def compose_spline3(q: list[float], ddqm: float = 1.05, dts:list[float]= None) -
             polys = spline3([q0_point, q1_point], [dq0_point, dq1_point])
             trajectory.append((polys, dt))
     return trajectory
+#'''
+
+'''
+def compose_spline3(q: list[float], ddqm: float = 1.05, dts:list[float]= None) -> list[tuple[list[function], float]]:
+    trajectory = []
+    if dts is None:
+        # compute the duration of each polynomial
+        dts = []
+        for q1, q0 in zip(q[:len(q)-1], q[1:]):
+            dts.append(2*sqrt(2*pi*abs(q1-q0)/ddqm))
+    t = [0]
+    for dt in dts:
+        t += [t[-1]+dt]
+    spline = CubicSpline(t, q)
+    dspline = spline.derivative()
+    ddspline = dspline.derivative()
+    #print(spline.c)
+    # coefficients = spline.c.T[0]
+    # print(spline(0)[0])
+    qt = lambda t: spline(t)[0]
+    dqt = lambda t: dspline(t)[0]
+    ddqt = lambda t: ddspline(t)[0]
+    trajectory = [([qt, dqt, ddqt], t[-1])]
+    return trajectory
+'''
 
 
 """ #@
@@ -226,13 +253,13 @@ def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
     dq = np.dot(np.linalg.inv(A), c)
     return [0]+dq.T.tolist()[0]+[0]
 '''
-
+'''
 def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
     if len(q) == 2 : return [0, 0]
     A = np.zeros((len(q)-2, len(q)-2))
     c = np.zeros((len(q)-2, 1))
-    dqs = [q1-q0 for q0, q1 in zip(q[:len(q)-1], q[1:])]
-    ck = lambda k : 3*(dts[k]**2*dqs[k+1]+ dts[k+1]**2*dqs[k])/(dts[k]*dts[k+1])
+    dqs = [(q1-q0)[0] for q0, q1 in zip(q[:len(q)-1], q[1:])]
+    ck = lambda k : 3*((dts[k]**2)*dqs[k+1]+ (dts[k+1]**2)*dqs[k])/(dts[k]*dts[k+1])
     for i in range(len(q)-2):
         A[i,i] = 2*(dts[i+1]+dts[i])
         if i+1 < len(q)-2 : A[i, i+1] = dts[i]
@@ -240,6 +267,48 @@ def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
 
         if i+2 < len(q)-2 : c[i] = ck(i+1)
     
+    v = np.dot(np.linalg.inv(A), c)
+    return v.T.tolist()[0]
+'''
+
+def cubic_speeds(q: list[float], dts: list[float]) -> list[float]:
+    if len(q) == 2 : return [0, 0]
+    A = np.zeros((len(q)-2, len(q)-2))
+    c = np.zeros((len(q)-2, 1))
+    dqs = [(q1-q0)[0] for q0, q1 in zip(q[:len(q)-1], q[1:])]
+    ck = lambda k : 3*((dts[k]**2)*dqs[k+1]+ (dts[k+1]**2)*dqs[k])/(dts[k]*dts[k+1])
+    '''for i in range(1,len(q)-1):
+        A[i-1,i-1] = 2*(dts[i]+dts[i-1])
+        if i < len(q)-2 : A[i-1, i] = dts[i-1]
+        if i-2 >= 0 : A[i-1, i] = dts[i]
+
+        c[i-1] = ck(i)
+    '''
+    
+    print(len(q), len(dts), len(dqs))
+    for i in range(len(q)-2):
+        '''
+        k = i+1
+        A[i,i] = 2*(dts[k]-dts[i])
+        if i-1 >= 0 : A[i, i-1] = dts[k+1]
+        if i+1 < len(q)-2: A[i, i+1] = dts[i]
+        '''
+        
+        A[i, i] += 2*dts[i]
+        if i+1 < len(q)-2 : A[i, i+1] = dts[i]
+        if i-1 >= 0 : A[i-1, i-1] += 2*dts[i]
+        if i-2 >= 0 : A[i-1, i-2] = dts[i]
+
+        if i + 1 < len(q)-1: c[i] = ck(i)
+    
+    '''
+    c_temp = np.zeros((len(q), 1))
+    for i in range(len(q)):
+        c_temp[i] = ck(i)
+    c = c_temp[1:len(q)-1]
+    print(len(c))
+    '''
+
     v = np.dot(np.linalg.inv(A), c)
     return v.T.tolist()[0]
 
@@ -282,7 +351,7 @@ def preprocess(q: list[float], limit:float=pi/3) -> list[float]:
 @outputs: 
 - list[tuple[ndarray, float]]: list containing the coefficients of each section of the trajectory and their durations.
 @# """
-def trapezoidal(q:list[float], ddqm:float = 1.05, tf: float = None) -> list[tuple[np.ndarray, float]]:
+def trapezoidal(q:list[float], ddqm:float = 1.05, tf: float = None) -> tuple[list[function], float]: #list[tuple[np.ndarray, float]]:
     # abs(ddqm) >= 4*abs(q[1]-q[0])/tf**2
     # tf**2/(4*abs(q[1]-q[0])) >= 1/abs(ddqm)
     # tf >= +sqrt((4*abs(q[1]-q[0]))/abs(ddqm))
@@ -298,10 +367,27 @@ def trapezoidal(q:list[float], ddqm:float = 1.05, tf: float = None) -> list[tupl
         tc = tf/2-sqrt((ddqm*tf)**2-4*ddqm*(q[1]-q[0]))/(2*ddqm)
     qc = q[0] + 0.5*ddqm*tc**2
     qb = qc+ddqm*tc*(tf-2*tc)
+    '''
     first = (np.array([[q[0]],[0],[0.5*ddqm]]).T,tc) # (coefficients, duration)
     second = (np.array([[qc], [ddqm*tc], [0]]).T, tf-2*tc)
     third = (np.array([[qb],[ddqm*tc], [-0.5*ddqm]]).T, tc)
-    return [first, second, third]
+    '''
+    first = np.array([[q[0], 0, 0.5*ddqm]])
+    second = np.array([[qc, ddqm*tc, 0]])
+    third = np.array([[qb, ddqm*tc, -0.5*ddqm]])
+    def qt(t): 
+        if t <= tc : return np.dot(first[0], np.array(time_row(t, 2, 0)).T)
+        if t > tc and t <= tc+tf-2*tc : return np.dot(second[0], np.array(time_row(t, 2, 0)).T)
+        if t > tc+tf-2*tc and t <= tf : return np.dot(third[0], np.array(time_row(t, 2, 0)).T)
+    def dqt(t): 
+        if t <= tc : return np.dot(first[0], np.array(time_row(t, 2, 1)).T)
+        if t > tc and t <= tc+tf-2*tc : return np.dot(second[0], np.array(time_row(t, 2, 1)).T)
+        if t > tc+tf-2*tc and t <= tf : return np.dot(third[0], np.array(time_row(t, 2, 1)).T)
+    def ddqt(t): 
+        if t <= tc : return np.dot(first[0], np.array(time_row(t, 2, 2)).T)
+        if t > tc and t <= tc+tf-2*tc : return np.dot(second[0], np.array(time_row(t, 2, 2)).T)
+        if t > tc+tf-2*tc and t <= tf : return np.dot(third[0], np.array(time_row(t, 2, 2)).T)
+    return ([qt, dqt, ddqt], tf)
 
 
 """ #@
@@ -313,6 +399,7 @@ def trapezoidal(q:list[float], ddqm:float = 1.05, tf: float = None) -> list[tupl
 @outputs: 
 - list[tuple[ndarray, float]] :  list of coefficients/trapezoidal-duration tuples.
 @# """
+'''
 def compose_trapezoidal(q:list[float], ddqm:float = 1.05) -> list[tuple[np.ndarray, float]]:
     A = []
     for k in range(len(q)-1):
@@ -320,6 +407,16 @@ def compose_trapezoidal(q:list[float], ddqm:float = 1.05) -> list[tuple[np.ndarr
         q1 = q[k+1]
         qk = trapezoidal([q0, q1], ddqm)
         A += qk
+    return A
+'''
+
+def compose_trapezoidal(q:list[float], ddqm:float = 1.05) -> list[tuple[list[function], float]]: #list[tuple[np.ndarray, float]]:
+    A = []
+    for k in range(len(q)-1):
+        q0 = q[k][0]
+        q1 = q[k+1][0]
+        qk = trapezoidal([q0, q1], ddqm)
+        A.append(qk)
     return A
 
 """ #@
@@ -374,7 +471,7 @@ def compose_cycloidal(q:list[float], ddqm:float = 1.05) -> list[tuple[list[funct
 @outputs: 
 - ndarray: column numpy array containing the values of the joint coordinates.
 @# """
-def ik(x:float, y:float, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2':0.25}) -> np.ndarray:
+def ik(x:float, y:float, z:float = 0, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2':0.25}) -> np.ndarray:
     if x**2+y**2 > (sizes['l1']+sizes['l2'])**2: return None
     q1 = 0
     q2 = 0
@@ -390,7 +487,7 @@ def ik(x:float, y:float, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2'
         q2 = acos((x**2+y**2-a1**2-a2**2)/(2*a1*a2))
         q1 = atan2(y,x)-atan2(a2*sin(q2), a1+a2*cos(q2))
     
-    q = np.array([[q1,q2]]).T
+    q = np.array([[q1,q2,z]]).T
     return q
 
 """ #@

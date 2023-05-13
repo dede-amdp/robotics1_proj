@@ -89,14 +89,14 @@ class Point{
         this.relative = {x, y};
         var rx, ry;
         [rx, ry] = rel2abs(x, y, settings);
-        this.actual = {'x':rx, 'y': ry};
+        this.actual = {'x':rx, 'y': ry, 'z': 0};
     }
 
     set relX(x){
         this.relative.x = x;
         var rx, ry;
         [rx, ry] = rel2abs(this.relX, this.relY, this.settings);
-        this.actual = {'x':rx, 'y': ry};
+        this.actual = {'x':rx, 'y': ry, 'z': 0};
     }
 
     get relX(){
@@ -107,7 +107,7 @@ class Point{
         this.relative.y = y;
         var rx, ry;
         [rx, ry] = rel2abs(this.relX, this.relY, this.settings);
-        this.actual = {'x':rx, 'y': ry};
+        this.actual = {'x':rx, 'y': ry, 'z': 0};
     }
 
     get actX(){
@@ -116,6 +116,10 @@ class Point{
 
     get actY(){
         return this.actual.y;
+    }
+
+    get actZ(){
+        return this.actual.z;
     }
 
     set actX(x){
@@ -130,6 +134,10 @@ class Point{
         var rx, ry;
         [rx, ry] = abs2rel(this.actX, this.actY, this.settings);
         this.relative = {'x':rx, 'y': ry};
+    }
+
+    set actZ(z){
+        this.actual.z = z;
     }
 
     get relY(){
@@ -197,8 +205,8 @@ class Trajectory{
         this.data.push({'type':'line', 'data':[p0, p1, raised]}) // start and end point
     }
 
-    add_circle(c, r, theta_0, theta_1, raised){
-        this.data.push({'type':'circle', 'data': [c, r, theta_0, theta_1, raised]}) // point and diameter
+    add_circle(c, r, theta_0, theta_1, raised, a, p){
+        this.data.push({'type':'circle', 'data': [c, r, theta_0, theta_1, raised, a, p]}) // point and diameter
     }
 
     reset(){
@@ -208,6 +216,7 @@ class Trajectory{
     draw(ctx){
         for(var traj of this.data){
             if(traj.type == 'line'){
+                if(traj.data[2]) continue
                 ctx.beginPath();
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = "#000000";
@@ -216,6 +225,7 @@ class Trajectory{
                 ctx.stroke();
                 ctx.closePath();
             }else if(traj.type == 'circle'){
+                if(traj.data[4]) continue
                 var c, r, theta_0, theta_1;
                 c = traj.data[0];
                 r = traj.data[1];
