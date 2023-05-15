@@ -345,7 +345,7 @@ function draw_loop(){
     for(var p of points) draw_point(p.relative['x'], p.relative['y']);
     traj.draw(ctx);
     man.draw_pose(ctx);
-    man.draw_traces(ctx);
+    man.draw_traces(ctx); // -> slows down the animation a lot
     // draw the ui
     // these ui elements will be draw on top of everything else as long as the tool is used
     tool();

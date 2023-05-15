@@ -49,7 +49,7 @@ class Manipulator{
         ctx.closePath();
     }
 
-    draw_traces(ctx, colors = ['#0000FF','#00FF00']){
+    async draw_traces(ctx, colors = ['#0000FF','#00FF00']){ // made async so that the animation loop does not slow down
         ctx.beginPath();
         ctx.lineWidth = 5;
         ctx.strokeStyle = colors[0];
