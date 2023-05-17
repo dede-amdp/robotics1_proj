@@ -21,7 +21,8 @@ settings = {
     'm_p': 1 / input_canvas.width, // m/p -> meters per pixel conversion factor
     'l1': 0.25, // length of the first arm
     'l2': 0.25, // length of the second arm
-    's_step': 1/50 // slicing step size
+    's_step': 1/50, // slicing step size
+    'framerate': 5 // animation framerate //TODO: make it dynamic
 };
 
 
@@ -349,5 +350,6 @@ function draw_loop(){
     // draw the ui
     // these ui elements will be draw on top of everything else as long as the tool is used
     tool();
-    window.requestAnimationFrame(draw_loop);
+    // window.requestAnimationFrame(draw_loop);
+    setTimeout(draw_loop, 1000/settings['framerate']);
 }

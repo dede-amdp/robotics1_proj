@@ -46,7 +46,7 @@ def debug_plot(q, name="image"):
     t = [i*settings['Tc'] for i in range(len(q))]
     plt.plot(t, q)
     plt.grid(visible=True)
-    plt.savefig(name+'.png')
+    plt.savefig('images/'+name+'.png')
     plt.close()
 
 def debug_plotXY(x, y, name="image"):
@@ -54,7 +54,7 @@ def debug_plotXY(x, y, name="image"):
     plt.figure()
     plt.plot(x, y)
     plt.grid(visible=True)
-    plt.savefig(name+'.png')
+    plt.savefig('images/'+name+'.png')
     plt.close()
 
 
