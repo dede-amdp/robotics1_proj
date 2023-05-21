@@ -22,7 +22,7 @@ settings = {
     'l1': 0.25, // length of the first arm
     'l2': 0.25, // length of the second arm
     's_step': 1/50, // slicing step size
-    'framerate': 5 // animation framerate //TODO: make it dynamic
+    'framerate': 20 // animation framerate //TODO: make it dynamic
 };
 
 
@@ -60,84 +60,35 @@ function js_get_data() {
     var temp = [];
     // add to temp 
     for(var t of traj.data){
+        var a,b, penup, c, r;
         if(t.type == 'line'){
-            const linef = function(s, data) {
-                // p = pi+(pf-pi)*s, s in [0,...,1]
-                var a,b,l;
-                a = data[0]; // first point
-                b = data[1]; // final point
-                l = b.sub(a); // vector from a to b
-                return a.add(l.scale(s)); // move from a to b but just by a distance of s*|l|
-            };
-            if(t.data[2]){
-                // the pen is up
-                if(temp.length == 0){
-                    // if this is the first trajectory, add also the first point
-                    // otherwise it will ignore the first point of the trajectory if the pen is up
-                    var a = t.data[0].actual;
-                    a.z = 1;
-                    temp.push(a);
-                }
-                // don't do any slicing
-                var b = t.data[1].actual;
-                b.z = 1;
-                temp.push(b);
-                continue;
-            }
-            // slice the motion primitive with a step size of `s_step`
-            for(var s = temp.length == 0 ? 0 : settings['s_step'] ; s <= 1; s+=settings['s_step']){
-                temp.push(linef(s, t.data).actual);
-            }
+            a = t.data[0];
+            b = t.data[1];
+            penup = t.data[2];
+        }else{
+            a = t.data[5];
+            b = t.data[6];
+            penup = t.data[4];
+            c = t.data[0];
+            r = t.data[1]
         }
-        else if(t.type == 'circle'){
-            const circf = function(s, data){
-                var c, r, theta_0, theta_1, d, A, B, ccw;
-                c = data[0]; // center
-                r = data[1]; // radius
-                theta_0 = data[2]; // start angle
-                theta_1 = data[3]; // end angle
-                d = -Math.abs(theta_1-theta_0); // delta angle
-                A = theta_0 >theta_1; // first condition
-                B = Math.abs(theta_1-theta_0)<Math.PI; // second condition
-                ccw = (!A&&!B)||(A&&B); // counter clockwise motion
-                if (!ccw) d *= -1; // clockwise motion
-
-                var sd = theta_0+d*s;
-                sd = sd >= 0 ? sd : 2*Math.PI+sd; // maintain sd within the domain
-                sd = sd <= 2*Math.PI ? sd : sd-2*Math.PI;
-                var p = new Point(
-                    r*Math.cos(sd),
-                    r*Math.sin(sd),
-                    settings
-                );
-                return c.add(p); // rotate from the starting by an angle of `sd` radians
-            };
-            if(t.data[4]){
-                // the pen is up
-                if(temp.length == 0){
-                    // if this is the first trajectory, add also the first point
-                    // otherwise it will ignore the first point of the trajectory if the pen is up
-                    var a = t.data[5].actual;
-                    a.z = 1;
-                    temp.push(a);
-                }
-                // don't do any slicing 
-                var p = t.data[6].actual;
-                p.z = 1;
-                temp.push(p);
-                continue;
-            }
-            // slice the motion primitive with a step of `s_step`
-            for(var s = temp.length == 0 ? 0 : settings['s_step']; s <= 1; s+=settings['s_step']){
-                temp.push(circf(s, t.data).actual);
-            }
-        }
+        // trajectory = {'type', 'points', 'data'}
+        // example:
+        // line_t = {'type':'line', 'points': [p0, p1], 'data':[penup]}
+        // circle_t = {'type':'circle', 'points': [a, b], 'data':[center, radius, penup, ...]}
+        var to_send = {
+            'type':t.type,
+            'points':[[a.actX, a.actY], [b.actX, b.actY]],
+            'data':t.type == 'line' ? {'penup':penup} : {'penup':penup, 'center':[c.actX, c.actY], 'radius':r}
+        };
+        temp.push(to_send);
     }
     points = []; //empty the array
     traj.reset(); // reset the trajectory
     draw_background();
     return temp; // return to python the sliced trajectory data
 }
+
 
 function serial_online(is_online) {
     // change the class of the status "badge" to make it show the status of the serial connection

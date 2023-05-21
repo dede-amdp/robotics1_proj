@@ -12,9 +12,11 @@ from lib import serial_com as scm # serial communication library
 import traceback
 
 settings = {
-    'Tc' : 1e-3, # s
-    'acc_max' : 1.05, #1.05, # rad/s**2
-    'ser_started': False
+    'Tc' : 1e-2, # s
+    'max_acc' : 1.05, #1.05, # rad/s**2
+    'ser_started': False,
+    'line_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t), # timing laws for line and circle segments
+    'circle_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t) # lambda t, tf: t/tf
 }
 
 sizes = {
@@ -34,7 +36,7 @@ def handle_closure(sig, frame):
         settings['ser_started'] = False
     exit(1)
 
-def compute_trajectory(q_list: np.ndarray, method = tpy.compose_cycloidal, ddqm=settings['acc_max']) -> list[list[tuple]]:
+def compute_trajectory(q_list: np.ndarray, method = tpy.compose_cycloidal, ddqm=settings['max_acc']) -> list[list[tuple]]:
     q1 = method([q[0] for q in q_list], ddqm) # trajectory of joint 1
     q2 = method([q[1] for q in q_list], ddqm) # trajectory of joint 2
     q3 = [q[2] for q in q_list] # pen up or pen down ?
@@ -91,46 +93,31 @@ def py_log(msg):
 def py_get_data():
     try:
         data = eel.js_get_data()()
-        if len(data) < 2: 
+        if len(data) < 1: 
             raise Exception("Not Enough Points to build a Trajectory")
-        q_list = []
-        for point in data:
-            # point contains also the information about the z axis
-            # it might be better to handle it in the firmware so that when the next point has z = 1
-            # the robot can stop in place and move up if it is not already up,
-            # or down when it arrives to z = 0 if it is not already down
-            q_list.append(tpy.ik(point['x'], point['y'], point['z'], None, sizes))
-        # DEBUG
-        # print("List of q points: ", q_list)
-        # END DEBUG
-        trajectories = compute_trajectory(q_list)#, tpy.compose_trapezoidal)#tpy.compose_spline3) # get the trajectory for each motor
-        q = ([], [], [])    # q(t) for each motor
-        dq = ([], [])       # dq(t) for each motor (aside from the third one) 
-        ddq = ([], [])      # ssq(t) for each motor (aside for the third one)
-        for i in range(len(trajectories[0])):
-            traj1, dt1 = trajectories[0][i] # first motor trajectory
-            traj2, dt2 = trajectories[1][i] # second motor trajectory
-            # compute for each trajectory q(t), dq(t) and ddq(t) with a time step of Tc
-            for t in tpy.rangef(0, settings['Tc'], max(dt1, dt2)):
-                if t <= dt1:
-                    q[0].append(traj1[0](t))
-                    dq[0].append(traj1[1](t))
-                    ddq[0].append(traj1[2](t))
-                else:
-                    q[0].append(q[0][-1])
-                    dq[0].append(dq[0][-1])
-                    ddq[0].append(ddq[0][-1])
-                if t <= dt2:
-                    q[1].append(traj2[0](t))
-                    dq[1].append(traj2[1](t))
-                    ddq[1].append(traj2[2](t))
-                else:
-                    q[1].append(q[1][-1])
-                    dq[1].append(dq[1][-1])
-                    ddq[1].append(ddq[1][-1])
-                q[2].append(trajectories[2][i+1]) # pen up or down (3rd motor trajectory)
-                # i+1 because the first value is "useless", 
-                # the firmware will raise or lower the pen depending on the next point
+        # data contains the trajectory patches to stitch together
+        # trajectory = {'type', 'points', 'data'}
+        # example:
+        # line_t = {'type':'line', 'points': [p0, p1], 'data':[penup]}
+        # circle_t = {'type':'circle', 'points': [a, b], 'data':[center, radius, penup, ...]}
+        q0s = []
+        q1s = []
+        penups = []
+        ts = []
+        for patch in data: 
+            (q0s_p, q1s_p, penups_p, ts_p) = tpy.slice_trj( patch, 
+                                                    Tc=settings['Tc'],
+                                                    max_acc=settings['max_acc'],
+                                                    line=settings['line_tl'],
+                                                    circle=settings['circle_tl'],
+                                                    sizes=sizes) # returns a tuple of points given a timing law for the line and for the circle
+            q0s += q0s_p if len(q0s) == 0 else q0s_p[1:] # for each adjacent patch, the last and first values coincide, so ignore the first value of the next patch to avoid singularities
+            q1s += q1s_p if len(q1s) == 0 else q1s_p[1:] # ignoring the starting and ending values of consecutive patches avoids diverging accelerations
+            penups += penups_p
+        ts += [(t + ts[-1] if len(ts) > 0  else t) for t in (ts_p if len(ts) == 0 else ts_p[1:])] # each trajectory starts from 0: the i-th patch has to start in reality from the (i-1)-th final time instant
+        q = (q0s, q1s, penups)
+        dq = (tpy.find_velocities(q[0], ts), tpy.find_velocities(q[1], ts))
+        ddq = (tpy.find_accelerations(dq[0], ts), tpy.find_accelerations(dq[1], ts))
         send_data('trj', q=q, dq=dq, ddq=ddq)
         trace_trajectory(q)
         # DEBUG
@@ -141,6 +128,7 @@ def py_get_data():
         debug_plot(dq[1], 'dq2')
         debug_plot(ddq[1], 'ddq2')
         # END DEBUG
+
     except Exception as e:
         print(e)
         print(traceback.format_exc())
@@ -154,7 +142,7 @@ def py_serial_online():
 def py_serial_startup():
     scm.ser_init()
 
-signal(SIGINT, handle_closure)
+signal(SIGINT, handle_closure) # ensures that the serial is closed 
 
 if __name__ == "__main__":
     global ser
