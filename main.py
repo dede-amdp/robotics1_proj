@@ -113,8 +113,9 @@ def py_get_data():
                                                     sizes=sizes) # returns a tuple of points given a timing law for the line and for the circle
             q0s += q0s_p if len(q0s) == 0 else q0s_p[1:] # for each adjacent patch, the last and first values coincide, so ignore the first value of the next patch to avoid singularities
             q1s += q1s_p if len(q1s) == 0 else q1s_p[1:] # ignoring the starting and ending values of consecutive patches avoids diverging accelerations
-            penups += penups_p
-        ts += [(t + ts[-1] if len(ts) > 0  else t) for t in (ts_p if len(ts) == 0 else ts_p[1:])] # each trajectory starts from 0: the i-th patch has to start in reality from the (i-1)-th final time instant
+            penups += penups_p if len(penups) == 0 else penups_p[1:]
+            ts += [(t + ts[-1] if len(ts) > 0  else t) for t in (ts_p if len(ts) == 0 else ts_p[1:])] # each trajectory starts from 0: the i-th patch has to start in reality from the (i-1)-th final time instant
+        
         q = (q0s, q1s, penups)
         dq = (tpy.find_velocities(q[0], ts), tpy.find_velocities(q[1], ts))
         ddq = (tpy.find_accelerations(dq[0], ts), tpy.find_accelerations(dq[1], ts))

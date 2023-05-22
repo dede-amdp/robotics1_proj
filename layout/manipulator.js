@@ -1,3 +1,11 @@
+/*
+#@
+@name: class Manipulator
+@brief: class that represents a 2Dof manipulator and its trajectory;
+@inputs: 
+- list q: generalized coordinate values;
+@#
+*/
 class Manipulator{
     constructor(q, settings){
         this.q_coords = q;
@@ -6,6 +14,7 @@ class Manipulator{
         this.traces = {'x1':[],'x2':[]};
     }
 
+    // SETTERS AND GETTERS
     set q(q){
         this.q_coords = q;
         [this.p, this.end_eff] = this.dk(this.q_coords); // set also the end effector position
@@ -36,6 +45,14 @@ class Manipulator{
         this.traces = {'x1':[],'x2':[]};
     }
 
+/*
+#@
+@name: Manipulator.draw_pose    
+@brief: draws the two links of the manipulator
+@inputs: 
+- canvas context 2D ctx;
+@#
+*/
     draw_pose(ctx){
         settings = this.settings;
         ctx.beginPath();
@@ -49,11 +66,21 @@ class Manipulator{
         ctx.closePath();
     }
 
+/*
+#@
+@name: async Manipulator.draw_traces
+@brief: draws the "traces" of the manipulator (the trajectory that the links should have followed)
+@notes: the method was made async so that it may not increase too much the page reaction time;
+@inputs: 
+- canvas context 2D ctx;
+- optional list[string] colors: list of 2 colors to use for the links traces;
+@#
+*/
     async draw_traces(ctx, colors = ['#0000FF','#00FF00']){ // made async so that the animation loop does not slow down
         ctx.beginPath();
         ctx.lineWidth = 5;
         ctx.strokeStyle = colors[0];
-        if(this.traces['x1'].length < 1 || this.traces['x2'].length < 1) return ;
+        if(this.traces['x1'].length < 1 || this.traces['x2'].length < 1) return false;
         ctx.moveTo(this.traces['x1'][0][0], this.traces['x1'][0][1]);
         for(var p of this.traces['x1']){
             ctx.lineTo(p[0], p[1]);
@@ -71,8 +98,19 @@ class Manipulator{
         }
         ctx.stroke();
         ctx.closePath();
+        return true;
     }
 
+/*
+#@
+@name: Manipulator.dk
+@brief: computes the direct kinematics of the manipulator
+@inputs: 
+- list[float] q: configuration of the robot;
+@outputs: 
+- list[float]: list containing the positions of the ending points (list of coordinates) of the links
+@#
+*/
     dk(q){
         settings = this.settings;
         var p1 = [settings['l1'] * Math.cos(q[0]), settings['l1'] * Math.sin(q[0])]
@@ -83,6 +121,16 @@ class Manipulator{
     }
 }
 
+/*
+#@
+@name: class Point
+@brief: class modeling a point in the operational space
+@inputs: 
+- float x: x coordinate of the point;
+- float y: y coordinate of the point;
+- dict settings: dictionary containing data for coordinate conversion (from canvas space to operational space)
+@#
+*/
 class Point{
     constructor(x, y, settings){
         this.settings = settings;
@@ -92,6 +140,7 @@ class Point{
         this.actual = {'x':rx, 'y': ry, 'z': 0};
     }
 
+    // SETTERS AND GETTERS
     set relX(x){
         this.relative.x = x;
         var rx, ry;
@@ -144,6 +193,17 @@ class Point{
         return this.relative.y;
     }
 
+    // OPERATIONS 
+/*
+#@
+@name: Point.add
+@brief: adds to point vectors together
+@inputs: 
+- Point other: Point to add;
+@outputs: 
+- Point: result
+@#
+*/
     add(other){
         var result = new Point(this.relX, this.relY, this.settings);
         result.relX = result.relX+other.relX;
@@ -151,6 +211,16 @@ class Point{
         return result;
     }
 
+/*
+#@
+@name: Point.sub
+@brief: subtracts two point vectors together
+@inputs: 
+- Point other: point to subtract;
+@outputs: 
+- Point: result
+@#
+*/
     sub(other){
         var result = new Point(this.relX, this.relY, this.settings);
         result.relX = result.relX-other.relX;
@@ -158,10 +228,28 @@ class Point{
         return result;
     }
 
+/*
+#@
+@name: Point.mag
+@brief: computes the length of the point vector
+@outputs: 
+- float: length of the point vector
+@#
+*/
     mag(){
         return Math.sqrt(this.relX*this.relX+this.relY*this.relY);
     }
 
+/*
+#@
+@name: Point.scale
+@brief: scales the point vector length with the specified scalar
+@inputs: 
+- float scalar: value used to scale the length;
+@outputs: 
+- Point: scaled point vector
+@#
+*/
     scale(scalar){
         var result = new Point(0, 0, this.settings);
         //result.relX = scalar*result.relX;
@@ -173,6 +261,16 @@ class Point{
         return result;
     }
 
+/*
+#@
+@name: Point.rot    
+@brief: rotates (of the specified angle) the point vector around its origin
+@inputs: 
+float delta: angle (in radians) used for the rotation (a positive rotation is counterclockwise);
+@outputs: 
+- Point: rotated point vector
+@#
+*/
     rot(delta){
         var result = new Point(0, 0, this.settings);
         var rho = this.mag();
@@ -182,6 +280,16 @@ class Point{
         return result;
     }
 
+/*
+#@
+@name: Point.set
+@brief: sets the length of the point vector to the specified value
+@inputs: 
+- float scalar: length of the new vector;
+@outputs: 
+- Point: scaled point vector;
+@#
+*/
     set(scalar){
         var result = new Point(0, 0, this.settings);
         var rho = scalar;
@@ -191,28 +299,84 @@ class Point{
         return result;
     }
 
+/*
+#@
+@name: Point.angle
+@brief: computes the angle of the point vector (in radians)
+@outputs: 
+- float: angle of the point vector
+@#
+*/
     angle(){
         return Math.atan2(this.relY, this.relX);
     }
 }
 
+/*
+#@
+@name: class Trajectory
+@brief: class that models a trajectory made fo multiple patches
+@notes: the trajectory modelled by this class can be made up of two different kind of patches:
+* line: a linear movement from point A to point B;
+* circle: a curvilinear movement between two points (A and P) by following a circumference with given center and radius; 
+@#
+*/
 class Trajectory{
     constructor(){
         this.data = [];
     }
 
+/*
+#@
+@name: Trajectory.add_line
+@brief: adds a line patch to the trajectory
+@inputs: 
+- Point p0: starting point of the patch;
+- Point p1: ending point of the patch;
+- bool raised: boolean that states wether the pen on the end effector of the manipulator should be raised or not;
+@#
+*/
     add_line(p0, p1, raised){
         this.data.push({'type':'line', 'data':[p0, p1, raised]}) // start and end point
     }
 
+/*
+#@
+@name: Trajectory.add_circle
+@brief: adds a circular patch to the trajectory
+@inputs: 
+- Point c: center of the circumference;
+- float r: radius of the circumference;
+- float theta_0: angle of the starting point;
+- float theta_1: angle of the ending point;
+- bool raised: states wether the pen on the end effector of the manipulator should be up or not;
+- Point a: starting point of the circumference;
+- Point p: ending point of the circumference;
+@#
+*/
     add_circle(c, r, theta_0, theta_1, raised, a, p){
         this.data.push({'type':'circle', 'data': [c, r, theta_0, theta_1, raised, a, p]}) // point and diameter
     }
 
+/*
+#@
+@name: Trajectory.reset
+@brief: resets the trajectory data
+@#
+*/
     reset(){
         this.data = [];
     }
 
+/*
+#@
+@name: Trajectory.draw
+@brief: draws the trajectory
+@notes: each patch of the trajectory will be drawn on the canvas specified by the user
+@inputs: 
+- 2D canvas context ctx: context of the canvas that will be used to draw on;
+@#
+*/
     draw(ctx){
         for(var traj of this.data){
             if(traj.type == 'line'){
@@ -238,9 +402,7 @@ class Trajectory{
                 ctx.beginPath();
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = "#000000";
-                //var cw = Math.abs(theta_1-theta_0) < Math.PI && (theta_1 > theta_0); // clockwise
-                //ctx.arc(c.relX, c.relY, r, theta_0, theta_1, !cw)
-                ctx.arc(c.relX, c.relY, r, theta_0, theta_1, ccw); // TODO CORRECT THE WAY CIRCLES ARE DRAW
+                ctx.arc(c.relX, c.relY, r, theta_0, theta_1, ccw);
 
                 ctx.stroke();
                 ctx.closePath();

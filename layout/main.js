@@ -1,28 +1,28 @@
 'use strict';
 
-const input_canvas = document.getElementById('input_canvas');
-const ctx = input_canvas.getContext('2d');
-const send_btn = document.getElementById('send_data_btn');
-const online_status = document.getElementById('status-dot');
-const serial_com_btn = document.getElementById('start-serial-btn');
-const line_btn = document.getElementById('line-btn');
-const circle_btn = document.getElementById('circle-btn');
-const penup_btn = document.getElementById('penup-btn');
+const input_canvas = document.getElementById('input_canvas'); // canvas element
+const ctx = input_canvas.getContext('2d'); // canvas context
+const send_btn = document.getElementById('send_data_btn'); // send button element
+const online_status = document.getElementById('status-dot'); // circle showing serial communication status element
+const serial_com_btn = document.getElementById('start-serial-btn'); // button to retry serial communication element
+const line_btn = document.getElementById('line-btn'); // line tool button
+const circle_btn = document.getElementById('circle-btn'); // circle tool button
+const penup_btn = document.getElementById('penup-btn'); // pen-up button
 var points = []; // list of points -> end effector coordinates
-var circle_definition = [];
-var man, traj;
-var tool = line_tool;
-var penup = false;
-var dom_mouseX, dom_mouseY;
+var circle_definition = []; // points needed to define a circle (radius and arc)
+var man, traj; // manipulator and trajectory instance
+var tool = line_tool; // currently used tool
+var penup = false; // pen-up boolean
+var dom_mouseX, dom_mouseY; // mouse position on canvas
 
 
 settings = {
-    'origin': { 'x': input_canvas.width / 2, 'y': input_canvas.height / 2 },
+    'origin': { 'x': input_canvas.width / 2, 'y': input_canvas.height / 2 }, // origin of the manipulator
     'm_p': 1 / input_canvas.width, // m/p -> meters per pixel conversion factor
     'l1': 0.25, // length of the first arm
     'l2': 0.25, // length of the second arm
     's_step': 1/50, // slicing step size
-    'framerate': 20 // animation framerate //TODO: make it dynamic
+    'framerate': 60 // animation framerate
 };
 
 
@@ -55,6 +55,14 @@ function js_log(msg) {
     console.log(msg);
 }
 
+/*
+#@
+@name: (eel) js_get_data
+@brief: gives trajectory data to the python backend
+@outputs: 
+- list: list of json objs containing trajectory data
+@#
+*/
 eel.expose(js_get_data);
 function js_get_data() {
     var temp = [];
@@ -89,7 +97,14 @@ function js_get_data() {
     return temp; // return to python the sliced trajectory data
 }
 
-
+/*
+#@
+@name: serial_online
+@brief: shows a red or green circle depending on the serial com. status
+@inputs: 
+- bool is_online: boolean stating if the serial communication is online
+@#
+*/
 function serial_online(is_online) {
     // change the class of the status "badge" to make it show the status of the serial connection
     online_status.classList.remove('online');
@@ -100,6 +115,17 @@ function serial_online(is_online) {
         online_status.classList.add('offline');
 }
 
+/*
+#@
+@name: draw_background
+@brief: draws the background on the canvas
+@notes: the background shows two circumferences with radii equal to the lengths of the two links of the manipulator, with red areas showing where the end effector should avoid going to avoid problems with cable intertwining, etc...
+@inputs: 
+- optional string color: background color;
+- optional string line: line color;
+- optional string limit: limited zones color;
+@#
+*/
 function draw_background(color = '#EEEEEE', line = '#000000', limit = '#FF0000') {
     // draw white background
     ctx.beginPath();
@@ -149,6 +175,15 @@ function draw_background(color = '#EEEEEE', line = '#000000', limit = '#FF0000')
     ctx.closePath(); 
 }
 
+/*
+#@
+@name: draw_point
+@brief: draws a point on the canvas
+@inputs: 
+- float x: x coordinate of the point;
+- float y: y coordinate of the point;
+@#
+*/
 function draw_point(x, y) {
     ctx.beginPath();
     ctx.fillStyle = '#000000';
@@ -159,6 +194,24 @@ function draw_point(x, y) {
     ctx.closePath();
 }
 
+/*
+#@
+@name: find_circ
+@brief: find the circumference arc given 3 points
+@notes: the circumference arc can be defined with 3 points:
+* the first point determines where the arc should start;
+* the second point determines the diameter of the circumference;
+* the third point determines the angle of the arc, which is the angle between the vector from the center 
+of the circumference to the first point and the vector from the center to the third point; 
+@outputs:
+- Point center: center of the circumference;
+- Point a: starting point of the arc;
+- Point p: ending point of the arc;
+- float r: radius of the circumference;
+- theta_0: angle of the vector a-c;
+- theta_1: angle of the vector p-c;
+@#
+*/
 function find_circ(){
     /*
     circle_definition = [
@@ -189,6 +242,14 @@ function find_circ(){
     return [c, a, p, r, theta_0, theta_1];
 }
 
+/*
+#@
+@name: handle_input
+@brief: handles the click event on the canvas
+@inputs: 
+- mouse event e;
+@#
+*/
 function handle_input(e) {
     var boundary = e.target.getBoundingClientRect();
     var x = e.clientX - boundary.left;
@@ -232,6 +293,12 @@ function handle_serial() {
     eel.py_serial_online()(serial_online);
 }
 
+/*
+#@
+@name: line_tool
+@brief: method that shows the line tool gui
+@#
+*/
 function line_tool(){
     // use the mouse position (dom_mouseX, dom_mouseY) to show the correct ui
     if(points.length > 0){
@@ -245,6 +312,12 @@ function line_tool(){
     }
 }
 
+/*
+#@
+@name: circle_tool
+@brief: method that shows the circle tool gui
+@#
+*/
 function circle_tool(){
     // use the mouse position (dom_mouseX, dom_mouseY) to show the correct ui
     if(circle_definition.length == 0 && points.length > 0){
@@ -297,7 +370,7 @@ function draw_loop(){
     for(var p of points) draw_point(p.relative['x'], p.relative['y']);
     traj.draw(ctx);
     man.draw_pose(ctx);
-    man.draw_traces(ctx); // -> slows down the animation a lot
+    man.draw_traces(ctx) // -> slows down the animation a lot
     // draw the ui
     // these ui elements will be draw on top of everything else as long as the tool is used
     tool();
