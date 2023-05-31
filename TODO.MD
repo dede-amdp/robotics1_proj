@@ -23,7 +23,7 @@
     * [x] solve bug of circle trajectory and penup trajectory
   * [x] Implement timing law s(t) with different shapes (for example, linear or trapezoidal);
   * [x] Implement trajectory stitching with linear stitches -> velocity and acceleration will be both constant within each "stitch" (stitch = line that connects q[i] to q[i+1]);
-* [/] refactor and comment;
+* [x] refactor and comment;
 
 
 
