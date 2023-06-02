@@ -22,7 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include<stdint.h>
-#include "custom/custom.h"
+#include "custom.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
