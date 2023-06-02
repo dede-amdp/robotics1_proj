@@ -26,6 +26,13 @@
 * [x] refactor and comment;
 
 
+----------------------------------------------------------------------------
+
+## 02/06/23
+* [x] add logging feature;
+* [ ] add serial communication to firmware
+
+
 
 ** Per HMI **
 * Gioco simil lemming dove dei robottini devono raggiungere la base, a turni i giocatori devono mettere dei pad per far cambiare direzione ai lemming per farli arrivare alla propria base
