@@ -86,14 +86,14 @@ def debug_plotXY(x, y, name="image"):
     plt.savefig('images/'+name+'.png')
     plt.close()
 
-'''
+
 def d2h(d: float): # double to hex
     # < = little endian
     # q = long (double)
     # d = double
     # check: https://docs.python.org/2/library/struct.html
     return hex(unpack('<q', pack('<d', d))[0])
-'''
+
 
 
 def send_data(msg_type: str, **data):
@@ -114,9 +114,9 @@ def send_data(msg_type: str, **data):
                             f":{d2h(data['ddq'][0][i])[2:]}:{d2h(data['ddq'][1][i])[2:]}"+\
                             f":{int(data['q'][2][i])}\n"
                 '''
-                msg_str = f"TRJ:{data['q'][0][i]:.5f}:{data['q'][1][i]:.5f}"+\
-                            f":{data['dq'][0][i]:.5f}:{data['dq'][1][i]:.5f}"+\
-                            f":{data['ddq'][0][i]:.5f}:{data['ddq'][1][i]:.5f}"+\
+                msg_str = f"TRJ:{d2h(data['q'][0][i])[2:]}:{d2h(data['q'][1][i])[2:]}"+\
+                            f":{d2h(data['dq'][0][i])[2:]}:{d2h(data['dq'][1][i])[2:]}"+\
+                            f":{d2h(data['ddq'][0][i])[2:]}:{d2h(data['ddq'][1][i])[2:]}"+\
                             f":{int(data['q'][2][i])}\n"
                 scm.write_serial(msg_str) # send data through the serial com
                 pos = tpy.dk([data['q'][0][i], data['q'][1][i]], sizes)
