@@ -131,23 +131,23 @@ void controller(man_t *manip, double *u){
     double ep[2], ed[2], y[2], tau[2], Kpep[2], Kded[2], By[2], Cdq[2], tau[2];
     double Bddq[2], invC[4], result[2];
     uint8_t i;
-    ep[0] = (double) manip->q[0] - manip->q_actual[0];
-    ep[1] = (double) manip->q[1] - manip->q_actual[1];
-    ed[0] = (double) manip->dq[0] - manip->dq_actual[0];
-    ed[1] = (double) manip->dq[1] - manip->dq_actual[1];
+
+    diff(manip->q, manip->q_actual, 2, ep); /* q - q_d */
+    diff(manip->dq, manip->dq_actual, 2, ed); /* dq - dq_d */
+
     dot(Kp, 2, 2, ep, 2, 1, Kpep); /* Kp*ep */
     dot(Kd, 2, 2, ed, 2, 1, Kded); /* Kd*ed */
 
     /* y = Kp*e_p + Kd*e_d + ddq */
-    sum(Kpep, Kded, y, 2);
-    sum(y, manip->ddq, y, 2);
+    sum(Kpep, Kded, 2, y);
+    sum(y, manip->ddq, 2, y);
 
     dot(manip->B, 2, 2, y, 2, 1, By); /* B*y */
     dot(manip->C, 2, 2, manip->dq_actual, 2, 1, Cdq); /* C*dq */
     sum(By, Cdq, 2, tau); /* tau = B*y+C*dq  */
 
     dot(manip->B, 2, 2, manip->ddq_actual, 2, 1, Bddq); /* B*ddq */
-    diff(tau, Bddq, result, 2); /* tau - B*ddq */
+    diff(tau, Bddq, 2, result); /* tau - B*ddq */
     inv2x2(manip->C, invC); /* inv(C) */
     dot(invC, 2, 2, result, 2, 1, u); /* u = inv(C) * (tau - B*ddq) */
 }
