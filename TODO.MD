@@ -30,7 +30,15 @@
 
 ## 02/06/23
 * [x] add logging feature;
-* [ ] add serial communication to firmware
+* [/] add serial communication to firmware -- partially implemented
+  * [x] reading from serial method TO GET REFERENCE VALUES;
+  * [ ] other reading methods (other command types should be defined);
+  * [ ] writing to serial (for example -> logging and fault detection);
+* [ ] implement motor control method -> taken u from the controller method, use it to control the motors;
+* [ ] implement method to read from encoders;
+* [ ] implement homing procedure;
+* [ ] REMEMBER PENUP;
+* [ ] !! Refactor and documentation;
 
 
 
