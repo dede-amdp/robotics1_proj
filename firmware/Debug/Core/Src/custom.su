@@ -1,0 +1,9 @@
+../Core/Src/custom.c:18:6:HAL_UART_RxCpltCallback	40	static
+../Core/Src/custom.c:53:6:init_man	24	static
+../Core/Src/custom.c:82:9:dot	48	static
+../Core/Src/custom.c:119:9:inv2x2	56	static
+../Core/Src/custom.c:145:6:sum	40	static
+../Core/Src/custom.c:165:6:diff	40	static
+../Core/Src/custom.c:184:6:B	40	static
+../Core/Src/custom.c:210:6:C	64	static
+../Core/Src/custom.c:237:6:controller	320	static

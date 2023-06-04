@@ -1,6 +1,8 @@
 #include<stdint.h> /* used for types like uint8_t and similar */
 #include "ringbuffer.h"
 
+#ifndef CUSTOM_DEF
+#define CUSTOM_DEF
 /*
 bytes:
 3 for the command string (3 chars)
@@ -60,13 +62,12 @@ typedef struct manipulator {
     double C[4];
 } man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
 
-uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
-uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
-man_t manip;
+extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
+extern uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
+extern man_t manip;
 //controller parameters
-const double Kp[4] = {1,0,0,1}; 
-const double Kd[4] = {1,0,0,1};
-
+extern const double Kp[4];
+extern const double Kd[4];
 void init_man(man_t *manip);
 uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB, double* C);
 void sum(double *A, double *B, uint8_t n, double *C);
@@ -75,3 +76,5 @@ uint8_t inv2x2(double *M, double *invM);
 void B(man_t *manip);
 void C(man_t *manip);
 void controller(man_t *manip, double *u);
+
+#endif

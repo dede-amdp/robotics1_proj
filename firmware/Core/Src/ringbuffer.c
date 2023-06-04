@@ -13,7 +13,6 @@
 @#
 */
 rberror_t rbpush(ringbuffer_t *buffer, rbelement_t data){
-    uint8_t j;
     buffer->buffer[buffer->tail] = data;
     buffer->tail++;
     buffer->tail %= RBUF_SZ; /* avoid that tail goes outside the boundaries of the buffer */

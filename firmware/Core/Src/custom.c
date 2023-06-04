@@ -1,10 +1,18 @@
 #include "custom.h"
 
 #include<stdint.h>  /* used for types like uint8_t and similar */
+#include<string.h>  /* used for string manipulation via serial */
 #include<stdlib.h>  /* used for string manipulation via serial */
 #include <math.h>   /* used for sin and cos */
 #include "main.h"
 #include "ringbuffer.h"
+
+uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
+uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
+man_t manip;
+//controller parameters
+const double Kp[4] = {1,0,0,1}; 
+const double Kd[4] = {1,0,0,1};
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
@@ -18,13 +26,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
         data = strtok(NULL, ":");
         while(data != NULL){
             if(i == 6) break; /* reading penup */
-            *value = "0x"; /* will contain the value extracted from the received string */
+            value = "0x"; /* will contain the value extracted from the received string */
             strcat(value, data); /* string concatenation REF: https://www.programiz.com/c-programming/library-function/string.h/strcat */
             rbpush((((ringbuffer_t *) &manip)+i),  strtoull(value, NULL, 16)); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
             data = strtok(NULL, ":");
             i++;
         }
-        rbpush(&manip.penup, (double) atoi(*data));
+        rbpush(&manip.penup, (double) atoi(data));
     }else{ /* default case */
 
     }
@@ -239,9 +247,8 @@ void controller(man_t *manip, double *u){
     u = dq = inv(C)*(tau-B*ddq)
     */
     double q[2], dq[2], ddq[2], q_actual[2], dq_actual[2], ddq_actual[2];
-    double ep[2], ed[2], y[2], tau[2], Kpep[2], Kded[2], By[2], Cdq[2], tau[2];
+    double ep[2], ed[2], y[2], tau[2], Kpep[2], Kded[2], By[2], Cdq[2];
     double Bddq[2], invC[4], result[2];
-    uint8_t i;
 
     /* data preparation */
     rbpop(&manip->q0, &q[0]);

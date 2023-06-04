@@ -1,5 +1,8 @@
 #include<stdint.h>
 
+#ifndef RB_DEF
+#define RB_DEF
+
 #define RBUF_SZ 10
 
 typedef uint8_t rberror_t; // to show errors
@@ -28,3 +31,5 @@ rberror_t rbpop(ringbuffer_t *buffer, rbelement_t *data);
 rberror_t rbpeek(ringbuffer_t *buffer, rbelement_t *data);
 rberror_t rblast(ringbuffer_t *buffer, rbelement_t *data);
 void rbclear(ringbuffer_t *buffer);
+
+#endif

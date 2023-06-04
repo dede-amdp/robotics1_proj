@@ -93,7 +93,7 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   init_man(&manip); /* initialize the manipulator struct */
-  HAL_UART_Receive_DMA(&huart2, (uint8_t*) rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
+  HAL_UART_Receive_DMA(&huart2, (uint8_t*) &rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
   /* USER CODE END 2 */
 
   /* Infinite loop */
