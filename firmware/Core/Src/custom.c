@@ -74,7 +74,7 @@ void init_man(man_t *manip){
 - double *B: pointer to a vector of doubles of size nB*mB, which represents the second nBxmB matrix;
 - uint8_t nB: number of rows of matrix B;
 - uint8_t mB: number of columns of matrix B;
--double *C: pointer to a vector of doubles of size nA*mB, which represents the resulting nAxmB matrix -> if the operation cannot be done, it will be NULL;
+- double *C: pointer to a vector of doubles of size nA*mB, which represents the resulting nAxmB matrix -> if the operation cannot be done, it will be NULL;
 @outputs: 
 - uint8_t: 0 or 1 that shows whether the operation completed successfully or not.
 @#

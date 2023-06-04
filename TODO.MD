@@ -36,7 +36,8 @@
   * the end effector motor should not activate if the penup does not change;
 * [ ] !! Refactor and documentation;
 
-!! Documenting code is very important: it helps us remember what the code does after some days without touching it and it helps the professor understand that the written code is not just a mess of letters and numbers but something meaningful: COMMENT THE CODE when needed (do not overdo it otherwise it will be messy). Use ALWAYS multiline code, not inline ones. Write a "comment header" that explains what the function does, what each input and output does and how, in the following structure
+## Docs
+Documenting code is very important: it helps us remember what the code does after some days without touching it and it helps the professor understand that the written code is not just a mess of letters and numbers but something meaningful: COMMENT THE CODE when needed (do not overdo it otherwise it will be messy). Use ALWAYS multiline code, not inline ones. Write a "comment header" that explains what the function does, what each input and output does and how, in the following structure
 
 ```c
 /*
@@ -77,7 +78,8 @@ uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB
 }
 ```
 
-!! Refactoring code avoid having junk code --> variables that do not do anything or that hold values that will be changed without any use OR functions that are useless that get called when not needed or do not get called ever -> also leftovers from debug;
+## Refactoring
+Refactoring code avoids having junk code --> variables that do not do anything or that hold values that will be changed without any use OR functions that are useless that get called when not needed or do not get called ever -> also leftovers from debug;
 Refactoring removes these problems and leaves only the strictly necessary, making it easier to read and understand.
 To help out with refactoring, use the "// DEBUG" commend near a line of code that was added for debug and use "// START DEBUG //END DEBUG" limiters before and after the debug section, so that by searching for "debug" in the code you will be able to find each line of code that was added for debug! 
 
