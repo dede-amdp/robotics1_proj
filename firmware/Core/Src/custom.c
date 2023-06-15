@@ -285,3 +285,59 @@ void controller(man_t *manip, double *u){
     inv2x2(manip->C, invC); /* inv(C) */
     dot(invC, 2, 2, result, 2, 1, u); /* u = inv(C) * (tau - B*ddq) */
 }
+
+/*
+#@
+@name: rad2stepdir
+@brief: converts velocity (rad/s) to step and direction (step dir);
+@inputs: 
+- float dq: velocity (rad/s);
+- float resolution: resolution of the motor (how many radians is a single step?) -> expressed in radians;
+- float frequency: reciprocal of delta_t -> time period in which the change of position happens;
+- uint8_t *steps: pointer to the variable that will hold the number of steps;
+- int8_t *dir: pointer to the variable that will hold the direction (+1 means counterclockwise, -1 means clockwise);
+@outputs: 
+- void;
+@#
+*/
+void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, int8_t *dir){
+    /* 
+    Given the velocity dq (discretized as delta_q/delta_t), it can be rewritten in terms of resolution and number of steps:
+    dq = delta_q/delta_t = delta_q*f -> stepdir*Resolution*f
+    stepdir = dq/(Resolution*f)
+    dir = sign(stepdir)
+    step = abs(stepdir)
+    */
+    uint8_t stepdir = (uint8_t) dq/(resolution*frequency);
+   *dir = sign(stepdir);
+   *steps = abs(stepdir);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

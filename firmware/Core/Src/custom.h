@@ -76,5 +76,6 @@ uint8_t inv2x2(double *M, double *invM);
 void B(man_t *manip);
 void C(man_t *manip);
 void controller(man_t *manip, double *u);
+void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, int8_t *dir);
 
 #endif
