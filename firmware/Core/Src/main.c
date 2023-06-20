@@ -68,7 +68,7 @@ static void MX_USART2_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  rate_t rate;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -93,6 +93,7 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   init_man(&manip); /* initialize the manipulator struct */
+  init_rate(&rate, T_C); /* initialize the rate struct */
   HAL_UART_Receive_DMA(&huart2, (uint8_t*) &rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
   /* USER CODE END 2 */
 
@@ -103,7 +104,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    
+    rate_sleep(&rate); /* wait with a fixed frequency */
   }
   /* USER CODE END 3 */
 }

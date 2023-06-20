@@ -3,7 +3,8 @@
 #include<stdint.h>  /* used for types like uint8_t and similar */
 #include<string.h>  /* used for string manipulation via serial */
 #include<stdlib.h>  /* used for string manipulation via serial */
-#include <math.h>   /* used for sin and cos */
+#include<math.h>    /* used for sin and cos */
+#include<time.h>    /* used for fixing the while looping rate */
 #include "main.h"
 #include "ringbuffer.h"
 
@@ -313,6 +314,46 @@ void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, in
    *steps = abs(stepdir);
 }
 
+/*
+#@
+@name: init_rate
+@brief: initializes the rate struct
+@inputs: 
+- rate_t *rate: pointer to the rate struct to initialize;
+- uint16_t ms: number of millisecond that define the rate;
+@outputs: 
+- void;
+@#
+*/
+void init_rate(rate_t *rate, uint16_t ms){
+    rate->last_time = clock()/CLOCKS_PER_SEC;
+    rate->delta_time = ms;
+}
+
+/*
+#@
+@name: rate_sleep
+@brief: stops the process to maintain a fixed framerate (useful in while loops to implement fixed time control loops)
+@inputs: 
+- rate_t *rate: pointer to the rate struct;
+@outputs: 
+- void;
+@#
+*/
+void rate_sleep(rate_t *rate){
+    clock_t now, interval;
+    now = clock()/CLOCKS_PER_SEC; /* timestamp of this instant */
+    interval = now - rate->last_time; /* time passed from the last rate_sleep call */
+    /* wait until enough time has passed from the last rate_sleep call */
+    while((uint16_t) interval < rate->delta_time){
+        now = clock()/CLOCKS_PER_SEC;
+        interval = now - rate->last_time;
+    }
+    /* if enough time has passed, save the time stamp and go on with the process */
+    rate->last_time = now;
+    return;
+
+}
 
 
 

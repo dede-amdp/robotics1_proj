@@ -544,8 +544,8 @@ def slice_trj(patch: dict, **kargs):
     ts = []
 
     # patch['points'] -> [[x0, y0], [x1, y1]]
-    sp = Point(*patch['points'][0]) # starting point
-    ep = Point(*patch['points'][1]) # ending point
+    sp = Point(*patch['points'][0]) # starting point in operational space
+    ep = Point(*patch['points'][1]) # ending point in operational space
     l = (ep-sp).mag() # linear distance between the two points
     c = Point(*patch['data']['center']) if patch['type'] == 'circle' else None # center of the circle
     angle = 0
@@ -595,7 +595,7 @@ def slice_trj(patch: dict, **kargs):
     return q0s, q1s, penups, ts
 
 
-    """
+"""
 #@
 @name: find_velocities
 @brief: computes the velocity of the trajectory in each time instant
@@ -617,7 +617,7 @@ def find_velocities(q: list[float], ts: list[float]) -> list[float]:
         k+=1 # debug
     return [0]+dqs
 
-    """
+"""
 #@
 @name: find_accelerations
 @brief: computes the acceleration of the trajectory in each time instant

@@ -13,6 +13,7 @@ bytes:
 (3+8+48+1) = 60 (bytes) -> use 64 bytes just in case longer messages are needed
 */
 #define DATA_SZ 64
+#define T_C 1
 
 // matrix determinant macro
 #define DET(matrix) matrix[0]*matrix[3]-matrix[1]*matrix[2]
@@ -62,12 +63,18 @@ typedef struct manipulator {
     double C[4];
 } man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
 
+typedef struct rate {
+    clock_t last_time;
+    uint16_t delta_time;     /* in ms */
+} rate_t;
+
 extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
 extern uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
 extern man_t manip;
 //controller parameters
 extern const double Kp[4];
 extern const double Kd[4];
+
 void init_man(man_t *manip);
 uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB, double* C);
 void sum(double *A, double *B, uint8_t n, double *C);
@@ -77,5 +84,8 @@ void B(man_t *manip);
 void C(man_t *manip);
 void controller(man_t *manip, double *u);
 void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, int8_t *dir);
+
+void init_rate(rate_t *rate, uint16_t ms);
+void rate_sleep(rate_t *rate);
 
 #endif
