@@ -87,7 +87,7 @@ uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB
         operation actually does instead of having meaningless calculations */
     
     /* C[i, j] = \sum_k A[i, k]*B[k, j] */
-    /* given n rows and m columns, the matrix indexes i, j correspond to j+i*n array index */
+    /* given n rows and m columns, the matrix indexes i, j correspond to j+i*m array index */
     if(mA != nB){
         C = NULL;
         return 0; /* matrix multiplication cannot be done */
@@ -99,7 +99,7 @@ uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB
     for( i = 0; i < nA; i++){
         for( j = 0; j < mB; j++){
             for( k = 0; k < mA; k++){
-                C[j+i*2] += (double) A[k+i*2]*B[j+k*2];
+                C[j+i*mA] += (double) A[k+i*mA]*B[j+k*mB];
             }
         }
     }
@@ -168,6 +168,36 @@ void diff(double *A, double *B, uint8_t n, double *C){
     for(i = 0; i < n; i++){
         C[i] = A[i] - B[i];
     }
+}
+
+uint8_t det(double *M, double *d){
+    // TODO implement !!
+}
+
+uint8_t inv(double *M, uint8_t n, double *cofM, double *trM, double *invM){
+    /* cofM and trM are passed by the user so that the size of the arrays are controlled by the user */
+    uint8_t i,j;
+    double d;
+    det(M, &d);
+    if(d == 0) return 0;
+    cof(M, cofM);
+    tr(cofM, n, n, trM);
+    invM[j+i*n] = (double) (1/d)*trM[j+i*n];
+    return 1;
+}
+
+uint8_t cof(double *M, double *cofM){
+    // TODO implement !!
+}
+
+uint8_t tr(double *M, uint8_t n, uint8_t m, double *trM){
+    uint8_t i,j;
+    for(i = 0; i < n; i++){
+        for(j=0; j < m; j++){
+            trM[j*n+i] = M[i*m+j];
+        }
+    }
+    return 1;
 }
 
 /*
@@ -301,7 +331,7 @@ void controller(man_t *manip, double *u){
 - void;
 @#
 */
-void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, int8_t *dir){
+void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps, int8_t *dir){
     /* 
     Given the velocity dq (discretized as delta_q/delta_t), it can be rewritten in terms of resolution and number of steps:
     dq = delta_q/delta_t = delta_q*f -> stepdir*Resolution*f
@@ -309,9 +339,25 @@ void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, in
     dir = sign(stepdir)
     step = abs(stepdir)
     */
-    uint8_t stepdir = (uint8_t) dq/(resolution*frequency);
+    int16_t stepdir = (int16_t) dq/(resolution*frequency);
    *dir = sign(stepdir);
    *steps = abs(stepdir);
+}
+
+void speed_estimation(man_t *manip){
+    clock_t now;
+    double A[ESTIMATION_STEPS*ESTIMATION_STEPS], B[ESTIMATION_STEPS];
+    now = (clock_t) clock()/CLOCKS_PER_SEC; /* time passed from when the process launch */
+    uint8_t i,j;
+    for(i = 0; i < ESTIMATION_STEPS; i++){
+        for(j = 0; j < ESTIMATION_STEPS; j++){
+            A[j+i*ESTIMATION_STEPS] = pow((double)(now -  (clock_t) i*T_C), (double) ESTIMATION_STEPS-i-1);
+        }
+    }
+    for(i = 0; i < ESTIMATION_STEPS; i++){
+        rbget(&manip->q0_actual, i, &B[i]);
+    }
+
 }
 
 /*
@@ -325,8 +371,8 @@ void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, in
 - void;
 @#
 */
-void init_rate(rate_t *rate, uint16_t ms){
-    rate->last_time = clock()/CLOCKS_PER_SEC;
+void init_rate(rate_t *rate, clock_t ms){
+    rate->last_time = (clock_t) clock()/CLOCKS_PER_SEC;
     rate->delta_time = ms;
 }
 
@@ -342,17 +388,16 @@ void init_rate(rate_t *rate, uint16_t ms){
 */
 void rate_sleep(rate_t *rate){
     clock_t now, interval;
-    now = clock()/CLOCKS_PER_SEC; /* timestamp of this instant */
+    now = (clock_t) clock()/CLOCKS_PER_SEC; /* timestamp of this instant */
     interval = now - rate->last_time; /* time passed from the last rate_sleep call */
     /* wait until enough time has passed from the last rate_sleep call */
-    while((uint16_t) interval < rate->delta_time){
-        now = clock()/CLOCKS_PER_SEC;
+    while( interval < rate->delta_time){
+        now = (clock_t) clock()/CLOCKS_PER_SEC;
         interval = now - rate->last_time;
     }
     /* if enough time has passed, save the time stamp and go on with the process */
     rate->last_time = now;
     return;
-
 }
 
 

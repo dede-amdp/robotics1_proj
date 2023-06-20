@@ -69,6 +69,9 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   rate_t rate;
+  double u[2];
+  uint16_t steps0, steps1;
+  int8_t dir0, dir1;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -101,6 +104,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    controller(&manip, &u); /* apply the control law to find the input */
+    /* change the input from [rad/s] to [steps] and [direction] (stepdir) */
+    rad2stepdir(u[0], (double) RESOLUTION, (double) 1/T_C, &steps0, &dir0); /* first motor */
+    rad2stepdir(u[2], (double) RESOLUTION, (double) 1/T_C, &steps1, &dir1); /* second motor */
+    /* apply the inputs to the motors */
+    // TODO: implement methods to apply inputs to motors !!
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

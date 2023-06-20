@@ -13,7 +13,12 @@ bytes:
 (3+8+48+1) = 60 (bytes) -> use 64 bytes just in case longer messages are needed
 */
 #define DATA_SZ 64
+/* CONTROL TIME */
 #define T_C 1
+/* RESOLUTION OF THE STEPPER MOTOR (in rads) */
+#define RESOLUTION 1.8
+/* Number of previous values to use for speed and acceleration estimation */
+#define ESTIMATION_STEPS 10
 
 // matrix determinant macro
 #define DET(matrix) matrix[0]*matrix[3]-matrix[1]*matrix[2]
@@ -65,7 +70,7 @@ typedef struct manipulator {
 
 typedef struct rate {
     clock_t last_time;
-    uint16_t delta_time;     /* in ms */
+    clock_t delta_time;     /* in ms */
 } rate_t;
 
 extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
@@ -80,12 +85,18 @@ uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB
 void sum(double *A, double *B, uint8_t n, double *C);
 void diff(double *A, double *B, uint8_t n, double *C);
 uint8_t inv2x2(double *M, double *invM); 
+uint8_t det(double *M, double *d);
+uint8_t inv(double *M, uint8_t n, double *cofM, double *trM, double *invM);
+uint8_t cof(double *M, double *cofM);
+uint8_t tr(double *M, uint8_t n, uint8_t m, double *trM);
+
 void B(man_t *manip);
 void C(man_t *manip);
 void controller(man_t *manip, double *u);
-void rad2stepdir(float dq, float resolution, float frequency, uint8_t *steps, int8_t *dir);
+void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps, int8_t *dir);
+void speed_estimation(man_t *manip); /* TODO: Implement !! */
 
-void init_rate(rate_t *rate, uint16_t ms);
+void init_rate(rate_t *rate, clock_t ms);
 void rate_sleep(rate_t *rate);
 
 #endif

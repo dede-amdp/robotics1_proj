@@ -91,6 +91,16 @@ rberror_t rblast(ringbuffer_t *buffer, rbelement_t *data){
     return 1;
 }
 
+rberror_t rbget(ringbuffer_t *buffer, uint8_t i, rbelement_t *element){
+    if(i < 0 || i >= buffer->length){
+        /* out of bounds */
+        return 0;
+    }
+    uint8_t index = (buffer->head+i) % RBUF_SZ;
+    *element = buffer->buffer[index];
+    return 1;
+}
+
 /*
 #@
 @name: rbclear
