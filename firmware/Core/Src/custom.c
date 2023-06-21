@@ -170,34 +170,192 @@ void diff(double *A, double *B, uint8_t n, double *C){
     }
 }
 
-uint8_t det(double *M, double *d){
-    // TODO implement !!
+/*
+#@
+@name: det
+@brief: computes the determinant of a n x n matrix
+@notes: this particular implementation of the determinant algorithm doers not use recursion: is uses the property of elementary row operations that do not change the 
+determinant of the matrix to find a upper triangular matrix with the same determinant of the original matrix whose determinant is to be computed.
+The determinant of a triangular matrix is the multiplication of the elements on its main diagonal: by finding a triangular matrix B with the same determinant of a given square matrix A, 
+the determinant of matrix A can be found by computing the determinant of matrix B.
+@inputs: 
+- double *M: pointer to the determinant whose determinant is to be computed. IMPORTANT: the values in this matrix will be changed: ensure to keep the original data safe by passing a copy of the original matrix;
+- uint8_t n: order of the matrix;
+- double *d: pointer to the variable that will hold the resulting determinant;
+@outputs: 
+- void;
+@#
+*/
+void det(double *M, uint8_t n, double *d){
+    uint8_t i,j,k,found;
+    int8_t det_sign;
+    double temp, factor;
+    if(n == 1){
+        *d = M[0];
+        return;
+    }
+    if(n == 2){
+        *d = DET(M);
+    }
+    /*  
+        Via transformations that do not change the determinant of a matrix, 
+        it is possible to transform the matrix into a triangular one and find the determinant
+        through the multiplication of its diagonal.
+        If matrix A is transformed into matrix B via elementary row operations:
+        1. row exchange: A_j exchanged with A_i-> detB = -detA;
+        2. row subtraction: A_j -= k*A_i -> detB = detA;
+    */
+    found = 0; 
+    det_sign = 1;
+    for(k = 0; k < n; k++){
+        for(i = k; i < n; i++){
+            if(M[i*n] != 0){
+                found = 1;
+                if(i != k){
+                    det_sign *=-1; /* keep track of sign change */
+                    /* exchange rows */
+                    for(j = k; j < n; j++){
+                        temp = M[i*n+j];
+                        M[i*n+j] = M[k*n+j];
+                        M[k*n+j] = temp;
+                    }
+                }
+            }
+            if(!found){
+                *d = 0;
+                return;
+            }
+        }
+        /* row subtraction */
+        for(i = k+1; i < n; i++){
+            factor = (double) M[i*n]/M[k*n];
+            for(j = k; j < n; j++){
+                M[i*n+j] -= M[k*n+j]*factor;
+            }
+        }
+    }
+    /* multiply elements on main diagonal */
+    *d = 1;
+    for(i = 0; i < n; i++){
+        *d *= M[i*n+i];
+    }
+    *d *= det_sign; /* each row exchange changes the determinant sign */
 }
 
-uint8_t inv(double *M, uint8_t n, double *cofM, double *trM, double *invM){
+/*
+#@
+@name: inv
+@brief: computes the inverse of a square matrix M;
+@notes: the method requires pointer to temporary variables that will hold data used for the computation;
+@inputs: 
+- double *M: pointer to the matrix whose inverse should be computed;
+- double *adjM: pointer to the temporary variable that will hold the adjugate matrix >> should be a nxn array just like M;
+- double *subM: pointer to the temporary variable that will hold the submatrices used for the computation of the adjugate matrix >> should be a (n-1)x(n-1) array;
+- double *trM: pointer to the temporary variable that will hold the transposed adjugate matrix >> should be a nxn array just like M;
+- uint8_t n: order of the matrices;
+- double *invM: pointer to the temporary variable that will hold the inverse matrix of M;
+@outputs: 
+- uint8_t: it is a boolean value that shows whether the inversion is completed successfully or not.
+@#
+*/
+uint8_t inv(double *M, double *adjM, double *subM, double *trM, uint8_t n, double *invM){
     /* cofM and trM are passed by the user so that the size of the arrays are controlled by the user */
     uint8_t i,j;
     double d;
-    det(M, &d);
+    for(i = 0; i < n*n; i++){
+        trM[i] = M[i]; // copy temporarily matrix M in trM
+    }
+    det(trM, n, &d);
     if(d == 0) return 0;
-    cof(M, cofM);
-    tr(cofM, n, n, trM);
-    invM[j+i*n] = (double) (1/d)*trM[j+i*n];
+    adj(M, subM, n, adjM);
+    tr(adjM, n, n, trM);
+    for(i = 0; i < n*n; i++){
+        invM[i] = (double) (1/d)*trM[i];
+    }
     return 1;
 }
 
-uint8_t cof(double *M, double *cofM){
-    // TODO implement !!
+/*
+#@
+@name: adj
+@brief: computes the adjugate matrix of M
+@notes: the method requires temporary variables to hold useful data for the computation;
+@inputs: 
+- double *M: pointer to the **square** matrix of which the adjugate should be computed;
+- double *subM: pointer to the temporary variable that will hold the submatrices used for the computation >> should be a (n-1)x(n-1) array;
+- uint8_t n: order of the matrix;
+- double *adjM: pointer to the variable that will hold the resulting adjugate matrix;
+@outputs: 
+- void;
+@#
+*/
+void adj(double *M, double *subM, uint8_t n, double *adjM){
+    uint8_t i,j,w,k;
+    double d;
+    for( i = 0; i < n; i++){
+        for(j = 0; j < n; j++){
+            for(w = 0; w < (n-1)*(n-1); w++){
+                if(k%n != j && (uint8_t) (k/n) != i){
+                    subM[w] = M[k];
+                }
+                k++;
+            }
+            det(subM, n-1, &d);
+            if(i+j % 2 != 0){
+                d *= -1;
+            }
+            adjM[i*n+j] = d;
+        }
+    }
 }
 
-uint8_t tr(double *M, uint8_t n, uint8_t m, double *trM){
+/*
+#@
+@name: tr
+@brief: transposes a matrix
+@inputs: 
+- double *M: pointer to the matrix to transpose;
+- uint8_t n: number of rows;
+- uint8_t m: number of columns;
+- double *trM: pointer to the variable that will hold the transposed matrix;
+@outputs: 
+- void;
+@#
+*/
+void tr(double *M, uint8_t n, uint8_t m, double *trM){
     uint8_t i,j;
     for(i = 0; i < n; i++){
         for(j=0; j < m; j++){
             trM[j*n+i] = M[i*m+j];
         }
     }
-    return 1;
+}
+
+/*
+#@
+@name: pseudo_inv
+@brief: computes the pseudo inverse of matrix M: (M^T*M)^(-1)*M^T
+@notes: the method requires temporary variables to hold useful data for the computation; 
+@inputs: 
+- double *M: pointer to the matrix to pseudo-invert;
+- double *trM: pointer to the variable that will hold the transposed matrix used in the pseudo-inversion;
+- double *tempM: pointer to the variable that will hold the temporary transposition during the inversion;
+- double *adjM: pointer to the variable that will hold the adjugate matrix used during the inversion;
+- double *subM: pointer to the variable that will hold the submatrix used during the computation of the adjugate;
+- double *invM: pointer to the variable that will hold the inverted matrix (A^T*A)^(-1);
+- double *dotM: pointer to the variable that will hold the dot product between A^T and A; 
+- uint8_t n: order of the matrix to invert;
+- double *psinvM: pointer to the variable that will hold the pseudo-inverse;
+@outputs: 
+- void;
+@#
+*/
+void pseudo_inv(double *M, double *trM, double *tempM, double *adjM, double *subM, double *invM, double *dotM, uint8_t n, double *psinvM){
+    /* (M^T*M)^(-1)*M^T */
+    tr(M, n, n, trM);
+    dot(trM, n, n, M, n, n, dotM);
+    inv(dotM, adjM, subM, tempM, n, invM);
+    dot(invM, n, n, trM, n, n, psinvM);
 }
 
 /*
@@ -340,24 +498,64 @@ void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps
     step = abs(stepdir)
     */
     int16_t stepdir = (int16_t) dq/(resolution*frequency);
-   *dir = sign(stepdir);
-   *steps = abs(stepdir);
+    *dir = sign(stepdir);
+    *steps = abs(stepdir);
 }
 
-void speed_estimation(man_t *manip){
-    clock_t now;
-    double A[ESTIMATION_STEPS*ESTIMATION_STEPS], B[ESTIMATION_STEPS];
-    now = (clock_t) clock()/CLOCKS_PER_SEC; /* time passed from when the process launch */
+/*
+#@
+@name: speed_estimation
+@brief: computes the speed and acceleration estimations from a fixed number of previous motor positions
+@inputs: 
+- man_t *manip: pointer to the manipulator struct that holds all the data relative to the manipulator;
+- double *v_est: pointer to the variable that will hold the speed estimation;
+- double *a_est: pointer to the variable that will hold the acceleration estimation;
+@outputs: 
+- void;
+@#
+*/
+void speed_estimation(man_t *manip, double *v_est, double *a_est){
+    double now, esp;
+    double A[ESTIMATION_STEPS*ESTIMATION_STEPS], X[ESTIMATION_STEPS], P[ESTIMATION_STEPS], invA[ESTIMATION_STEPS*ESTIMATION_STEPS];
+    /* temp matrices */
+    double trM[ESTIMATION_STEPS*ESTIMATION_STEPS], tempM[ESTIMATION_STEPS*ESTIMATION_STEPS];
+    double adjM[ESTIMATION_STEPS*ESTIMATION_STEPS], subM[(ESTIMATION_STEPS-1)*(ESTIMATION_STEPS-1)];
+    double invM[ESTIMATION_STEPS*ESTIMATION_STEPS], dotM[ESTIMATION_STEPS*ESTIMATION_STEPS];
+
+    now = (double) NOW_TIME; /* time passed from when the process launch */
     uint8_t i,j;
     for(i = 0; i < ESTIMATION_STEPS; i++){
         for(j = 0; j < ESTIMATION_STEPS; j++){
-            A[j+i*ESTIMATION_STEPS] = pow((double)(now -  (clock_t) i*T_C), (double) ESTIMATION_STEPS-i-1);
+            A[j+i*ESTIMATION_STEPS] = pow((double)(now - i*T_C), (double) ESTIMATION_STEPS-i-1);
         }
     }
-    for(i = 0; i < ESTIMATION_STEPS; i++){
-        rbget(&manip->q0_actual, i, &B[i]);
-    }
 
+    for(i = 0; i < ESTIMATION_STEPS; i++){
+        rbget(&manip->q0_actual, i, &X[i]);
+    }
+    /*
+        x(t) = sum(p_i*t^i)
+        v(t) = sum(i*p_i*t^(i-1))
+        a(t) = sum(i*(i-1)*p_i*t^(i-2))
+        ---
+        p_i -> P[i]
+        x_i=A_i*P -> X = [x_0; x_1; ...; x_n] = [A_0; A_1; ...; A_n]*P = A*P -> P = A^(-1)*X = (A^T*A)^(-1)*A^T*X
+    */
+
+    pseudo_inv(A, trM, tempM, adjM, subM, invM, dotM, ESTIMATION_STEPS, invA);
+    dot(invA, ESTIMATION_STEPS, ESTIMATION_STEPS, X, ESTIMATION_STEPS, 1, P);
+    *v_est = 0;
+    *a_est = 0;
+    for(i = 0; i < ESTIMATION_STEPS; i++){
+        esp = (ESTIMATION_STEPS-i-1);
+        /* the derivation of constant values is 0 -> exclude the derivative of the constant values from the computation otherwise it would be now^i with i < 0 */
+        if(esp-1 >= 0){
+            *v_est += esp*pow(now, esp-1)*P[i];
+        }
+        if(esp-2 >= 0){ 
+            *a_est += esp*(esp-1)*pow(now, esp-2)*P[i];
+        }
+    }
 }
 
 /*
@@ -371,8 +569,8 @@ void speed_estimation(man_t *manip){
 - void;
 @#
 */
-void init_rate(rate_t *rate, clock_t ms){
-    rate->last_time = (clock_t) clock()/CLOCKS_PER_SEC;
+void init_rate(rate_t *rate, uint16_t ms){
+    rate->last_time = (double) NOW_TIME;
     rate->delta_time = ms;
 }
 
@@ -387,13 +585,13 @@ void init_rate(rate_t *rate, clock_t ms){
 @#
 */
 void rate_sleep(rate_t *rate){
-    clock_t now, interval;
-    now = (clock_t) clock()/CLOCKS_PER_SEC; /* timestamp of this instant */
-    interval = now - rate->last_time; /* time passed from the last rate_sleep call */
+    double now, interval;
+    now = (double) NOW_TIME;
+    interval = (double) (now - rate->last_time); /* time passed from the last rate_sleep call */
     /* wait until enough time has passed from the last rate_sleep call */
     while( interval < rate->delta_time){
-        now = (clock_t) clock()/CLOCKS_PER_SEC;
-        interval = now - rate->last_time;
+        now = (double) NOW_TIME;
+        interval = (double) (now - rate->last_time);
     }
     /* if enough time has passed, save the time stamp and go on with the process */
     rate->last_time = now;

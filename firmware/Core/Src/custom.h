@@ -20,8 +20,11 @@ bytes:
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 10
 
-// matrix determinant macro
+/* matrix determinant macro */
 #define DET(matrix) matrix[0]*matrix[3]-matrix[1]*matrix[2]
+/* get seconds from process start */
+#define NOW_TIME  ((double) clock())/((double) CLOCKS_PER_SEC)
+
 
 /*
 #@
@@ -69,8 +72,8 @@ typedef struct manipulator {
 } man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
 
 typedef struct rate {
-    clock_t last_time;
-    clock_t delta_time;     /* in ms */
+    double last_time;
+    uint16_t delta_time;     /* in ms */
 } rate_t;
 
 extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
@@ -85,18 +88,19 @@ uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB
 void sum(double *A, double *B, uint8_t n, double *C);
 void diff(double *A, double *B, uint8_t n, double *C);
 uint8_t inv2x2(double *M, double *invM); 
-uint8_t det(double *M, double *d);
-uint8_t inv(double *M, uint8_t n, double *cofM, double *trM, double *invM);
-uint8_t cof(double *M, double *cofM);
-uint8_t tr(double *M, uint8_t n, uint8_t m, double *trM);
+void det(double *M, uint8_t n, double *d);
+void adj(double *M, double *subM, uint8_t n, double *adjM);
+void tr(double *M, uint8_t n, uint8_t m, double *trM);
+uint8_t inv(double *M, double *adjM, double *subM, double *trM,  uint8_t n, double *invM);
+void pseudo_inv(double *M, double *trM, double *tempM, double *adjM, double *subM, double *invM, double *dotM, uint8_t n, double *psinvM);
 
 void B(man_t *manip);
 void C(man_t *manip);
 void controller(man_t *manip, double *u);
 void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps, int8_t *dir);
-void speed_estimation(man_t *manip); /* TODO: Implement !! */
+void speed_estimation(man_t *manip, double *v_est, double *a_est);
 
-void init_rate(rate_t *rate, clock_t ms);
+void init_rate(rate_t *rate, uint16_t ms);
 void rate_sleep(rate_t *rate);
 
 #endif
