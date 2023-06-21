@@ -25,6 +25,8 @@ bytes:
 /* get seconds from process start */
 #define NOW_TIME  ((double) clock())/((double) CLOCKS_PER_SEC)
 
+#define SIGN(A) (int8_t) ((A >= 0) - (A <= 0))
+
 
 /*
 #@

@@ -498,7 +498,7 @@ void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps
     step = abs(stepdir)
     */
     int16_t stepdir = (int16_t) dq/(resolution*frequency);
-    *dir = sign(stepdir);
+    *dir = SIGN(stepdir);
     *steps = abs(stepdir);
 }
 
