@@ -93,13 +93,14 @@ uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB
         return 0; /* matrix multiplication cannot be done */
     }
     uint8_t i, j, k;
-    for(i = 0; i < 4; i++){
+    for(i = 0; i < nA*mB; i++){
         C[i] = (double) 0.0;
     }
+
     for( i = 0; i < nA; i++){
         for( j = 0; j < mB; j++){
             for( k = 0; k < mA; k++){
-                C[j+i*mA] += (double) A[k+i*mA]*B[j+k*mB];
+                C[j+i*mB] += (double) A[k+i*mA]*B[j+k*mB];
             }
         }
     }
@@ -294,14 +295,17 @@ void adj(double *M, double *subM, uint8_t n, double *adjM){
     double d;
     for( i = 0; i < n; i++){
         for(j = 0; j < n; j++){
-            for(w = 0; w < (n-1)*(n-1); w++){
+            k=0;
+            w=0;
+            while(w < (n-1)*(n-1)){
                 if(k%n != j && (uint8_t) (k/n) != i){
                     subM[w] = M[k];
+                    w++;
                 }
                 k++;
             }
             det(subM, n-1, &d);
-            if(i+j % 2 != 0){
+            if((i+j) % 2 != 0){
                 d *= -1;
             }
             adjM[i*n+j] = d;

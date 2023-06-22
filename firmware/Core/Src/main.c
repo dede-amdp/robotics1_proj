@@ -102,6 +102,23 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  /* ANCHOR DEBUG */
+  double A[3*3] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+  double B[3*3] = {1.0, 3.0, 6.0, 9.0, 12.0, 27.0, 1.0, 2.0, 3.0};
+  double I[2*2] = {1.0, 1.0, 3.0, 4.0};
+  double I_det[2*2] = {1.0, 1.0, 3.0, 4.0};
+  double invI[2*2], adjI[2*2], subI[1],  trI[2*2], tempI[2*2], dotI[2*2], psinvI[2*2];
+  double C[3*3];
+  double d;
+
+  inv2x2(I, invI);
+  det(I_det, 2, &d);
+  adj(I, subI, 2, adjI);
+  inv(I,adjI, subI, trI, 2, invI);
+  pseudo_inv(I, trI, tempI, adjI, subI, invI, dotI, 2, psinvI);
+  tr(I, 2, 2, trI);
+
+  /* ANCHOR END DEBUG */
   while (1)
   {
     controller(&manip, &u); /* apply the control law to find the input */
