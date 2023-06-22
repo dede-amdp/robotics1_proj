@@ -14,9 +14,9 @@ bytes:
 */
 #define DATA_SZ 64
 /* CONTROL TIME */
-#define T_C 1
+#define T_C 0.01
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
-#define RESOLUTION 1.8
+#define RESOLUTION 0.0314
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 10
 
@@ -24,7 +24,7 @@ bytes:
 #define DET(matrix) matrix[0]*matrix[3]-matrix[1]*matrix[2]
 /* get seconds from process start */
 #define NOW_TIME  ((double) clock())/((double) CLOCKS_PER_SEC)
-
+/* SIGN macro */
 #define SIGN(A) (int8_t) ((A >= 0) - (A <= 0))
 
 
@@ -96,10 +96,10 @@ void tr(double *M, uint8_t n, uint8_t m, double *trM);
 uint8_t inv(double *M, double *adjM, double *subM, double *trM,  uint8_t n, double *invM);
 void pseudo_inv(double *M, double *trM, double *tempM, double *adjM, double *subM, double *invM, double *dotM, uint8_t n, double *psinvM);
 
-void B(man_t *manip);
-void C(man_t *manip);
+void B_calc(man_t *manip);
+void C_calc(man_t *manip);
 void controller(man_t *manip, double *u);
-void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps, int8_t *dir);
+void rad2stepdir(double dq, double resolution, double frequency, uint32_t *steps, int8_t *dir);
 void speed_estimation(man_t *manip, double *v_est, double *a_est);
 
 void init_rate(rate_t *rate, uint16_t ms);

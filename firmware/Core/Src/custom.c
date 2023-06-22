@@ -100,7 +100,7 @@ uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB
     for( i = 0; i < nA; i++){
         for( j = 0; j < mB; j++){
             for( k = 0; k < mA; k++){
-                C[j+i*mB] += (double) A[k+i*mA]*B[j+k*mB];
+                C[j+i*mB] += (double) (A[k+i*mA]*B[j+k*mB]);
             }
         }
     }
@@ -229,7 +229,7 @@ void det(double *M, uint8_t n, double *d){
         }
         /* row subtraction */
         for(i = k+1; i < n; i++){
-            factor = (double) M[i*n]/M[k*n];
+            factor = (double) (M[i*n]/M[k*n]);
             for(j = k; j < n; j++){
                 M[i*n+j] -= M[k*n+j]*factor;
             }
@@ -364,7 +364,7 @@ void pseudo_inv(double *M, double *trM, double *tempM, double *adjM, double *sub
 
 /*
 #@
-@name: B
+@name: B_calc
 @brief: computes the inertia matrix of the manipulator
 @notes: the inertia matrix B of the manipulator depends on its current configuration: 
 it is computed analytically with the dynamic model found via the  Matlab Peter Corke toolbox 
@@ -374,7 +374,7 @@ it is computed analytically with the dynamic model found via the  Matlab Peter C
 - void;
 @#
 */
-void B(man_t *manip){
+void B_calc(man_t *manip){
     double q1,q2;
     rblast(&manip->q0_actual, &q1);
     rblast(&manip->q1_actual, &q2);
@@ -390,7 +390,7 @@ void B(man_t *manip){
 
 /*
 #@
-@name: C
+@name: C_calc
 @brief: computes the coriolis matrix of the manipulator
 @notes: the coriolis matrix C of the manipulator depends on its current configuration and joint speed: 
 it is computed analytically with the dynamic model found via the  Matlab Peter Corke toolbox 
@@ -400,7 +400,7 @@ it is computed analytically with the dynamic model found via the  Matlab Peter C
 - void;
 @#
 */
-void C(man_t *manip){
+void C_calc(man_t *manip){
     double q1, q2, dq1, dq2;
     rblast(&manip->q0_actual, &q1);
     rblast(&manip->q1_actual, &q2);
@@ -456,8 +456,8 @@ void controller(man_t *manip, double *u){
     rblast(&manip->dq1_actual, &dq_actual[1]);
     rblast(&manip->ddq0_actual, &ddq_actual[0]);
     rblast(&manip->ddq1_actual, &ddq_actual[1]);
-    B(manip);
-    C(manip);
+    B_calc(manip);
+    C_calc(manip);
 
     diff(q, q_actual, 2, ep); /* q - q_d */
     diff(dq, dq_actual, 2, ed); /* dq - dq_d */
@@ -493,7 +493,7 @@ void controller(man_t *manip, double *u){
 - void;
 @#
 */
-void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps, int8_t *dir){
+void rad2stepdir(double dq, double resolution, double frequency, uint32_t *steps, int8_t *dir){
     /* 
     Given the velocity dq (discretized as delta_q/delta_t), it can be rewritten in terms of resolution and number of steps:
     dq = delta_q/delta_t = delta_q*f -> stepdir*Resolution*f
@@ -501,7 +501,7 @@ void rad2stepdir(double dq, double resolution, double frequency, uint16_t *steps
     dir = sign(stepdir)
     step = abs(stepdir)
     */
-    int16_t stepdir = (int16_t) dq/(resolution*frequency);
+    int32_t stepdir = (int32_t) (dq/(resolution*frequency));
     *dir = SIGN(stepdir);
     *steps = abs(stepdir);
 }

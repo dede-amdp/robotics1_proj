@@ -9,10 +9,10 @@
 ../Core/Src/custom.c:293:6:adj	48	static
 ../Core/Src/custom.c:329:6:tr	32	static
 ../Core/Src/custom.c:357:6:pseudo_inv	40	static
-../Core/Src/custom.c:377:6:B	40	static
-../Core/Src/custom.c:403:6:C	64	static
+../Core/Src/custom.c:377:6:B_calc	40	static
+../Core/Src/custom.c:403:6:C_calc	64	static
 ../Core/Src/custom.c:430:6:controller	320	static
-../Core/Src/custom.c:496:6:rad2stepdir	56	static
+../Core/Src/custom.c:496:6:rad2stepdir	48	static
 ../Core/Src/custom.c:521:6:speed_estimation	6496	static
 ../Core/Src/custom.c:576:6:init_rate	16	static
 ../Core/Src/custom.c:591:6:rate_sleep	32	static

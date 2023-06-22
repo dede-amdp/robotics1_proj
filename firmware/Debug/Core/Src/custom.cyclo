@@ -9,8 +9,8 @@ custom.c:262:9:inv	4
 custom.c:293:6:adj	7
 custom.c:329:6:tr	3
 custom.c:357:6:pseudo_inv	1
-custom.c:377:6:B	1
-custom.c:403:6:C	1
+custom.c:377:6:B_calc	1
+custom.c:403:6:C_calc	1
 custom.c:430:6:controller	1
 custom.c:496:6:rad2stepdir	1
 custom.c:521:6:speed_estimation	7
