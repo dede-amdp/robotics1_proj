@@ -556,7 +556,9 @@ def slice_trj(patch: dict, **kargs):
         d_alpha = (2*pi+v2.angle())%(2*pi) - (2*pi+v1.angle())%(2*pi) # between 0 and 2pi
         angle = d_alpha if abs(d_alpha) < pi else (-(2*pi-d_alpha) if d_alpha > 0 else 2*pi+d_alpha) # angle between the two vectors starting from the center of the circumference
 
-    length = l if patch['type'] == 'line' else patch['data']['radius']*abs(angle) # LENGTH OF THE PATH
+    # length = l if patch['type'] == 'line' else patch['data']['radius']*abs(angle) # LENGTH OF THE PATH
+    # NOTE: changed for testing purposes -> change when real accelerations values are found
+    length = l if patch['type'] == 'line' else abs(angle) # LENGTH OF THE PATH
     tf = sqrt(2*pi*length/kargs['max_acc']) # duration of the motion
 
     points = [] # points (in operational space)
