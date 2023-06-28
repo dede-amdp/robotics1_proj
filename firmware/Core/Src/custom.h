@@ -1,5 +1,6 @@
 #include<stdint.h> /* used for types like uint8_t and similar */
 #include "ringbuffer.h"
+#include "main.h"
 
 #ifndef CUSTOM_DEF
 #define CUSTOM_DEF
@@ -81,9 +82,12 @@ typedef struct rate {
 extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
 extern uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
 extern man_t manip;
-//controller parameters
+/* controller parameters */
 extern const double Kp[4];
 extern const double Kd[4];
+/* reduction values for motors */
+extern const uint8_t reduction1;
+extern const uint8_t reduction2;
 
 void init_man(man_t *manip);
 uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB, double* C);
@@ -104,5 +108,7 @@ void speed_estimation(man_t *manip, double *v_est, double *a_est);
 
 void init_rate(rate_t *rate, uint16_t ms);
 void rate_sleep(rate_t *rate);
+
+void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip);
 
 #endif

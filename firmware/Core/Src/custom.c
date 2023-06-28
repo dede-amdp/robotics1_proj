@@ -11,9 +11,12 @@
 uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
 uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
 man_t manip;
-//controller parameters
+/* controller parameters */
 const double Kp[4] = {1,0,0,1}; 
 const double Kd[4] = {1,0,0,1};
+/* reduction values for motors */
+const uint8_t reduction1 = 1; //10;
+const uint8_t reduction2 = 1; // 5;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
@@ -600,6 +603,39 @@ void rate_sleep(rate_t *rate){
     /* if enough time has passed, save the time stamp and go on with the process */
     rate->last_time = now;
     return;
+}
+
+
+void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip){
+    /*
+    CNT/ARR returns a value between 0 and 1: by multiplying it by 2*pi the resulting value shows the position of the motor
+    the reduction of the motor is already taken care of in the ARR value: ARR=CPR*REDUCTION -> 4x1000xreduction
+    4x is caused by the timer mode (TI1 and TI2)
+    */
+    double displacement1 = (double) (2*M_PI*(htim1->Instance->CNT)/(htim1->Instance->ARR));
+    double displacement2 = (double) (2*M_PI) - (2*M_PI*(htim2->Instance->CNT)/(htim2->Instance->ARR)); /* the motor is upside down */
+    if(displacement1 > 2*M_PI){
+    	displacement1 = 2*M_PI; /* clamping */
+	}
+	if(displacement2 > 2*M_PI){
+		displacement2 = 2*M_PI; /* clamping */
+	}
+    if(displacement1 > M_PI){
+    	displacement1 = displacement1 - (2*M_PI); /* redefining the domain between -PI and +PI */
+    }
+    if(displacement2 > M_PI){
+    	displacement2 = displacement2 - (2*M_PI); /* redefining the domain between -PI and +PI */
+    }
+    /* dir: 0 = counterclockwise, 1 = clockwise */
+    uint8_t dir1 = (uint8_t) (htim1->Instance->CR1 >> 4); /* the 5th bit of the CR1 register is the DIR bit */
+    uint8_t dir2 = (uint8_t) (htim2->Instance->CR1 >> 4);
+    rbpush(manip->q0_actual, displacement1);
+    rbpush(manip->q1_actual, displacement2);
+    /* TODO: do logging of data */
+    /* TODO: implement displacement buffer */
+    /* TODO: in python-> ensure that the reference angle is between -PI and +PI */
+
+
 }
 
 
