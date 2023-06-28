@@ -514,14 +514,14 @@ void rad2stepdir(double dq, double resolution, double frequency, uint32_t *steps
 @name: speed_estimation
 @brief: computes the speed and acceleration estimations from a fixed number of previous motor positions
 @inputs: 
-- man_t *manip: pointer to the manipulator struct that holds all the data relative to the manipulator;
+- ringbuffer_t *q_actual: pointer to the ringbuffer struct that holds all the data relative to the motor position;
 - double *v_est: pointer to the variable that will hold the speed estimation;
 - double *a_est: pointer to the variable that will hold the acceleration estimation;
 @outputs: 
 - void;
 @#
 */
-void speed_estimation(man_t *manip, double *v_est, double *a_est){
+void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est){
     double now, esp;
     double A[ESTIMATION_STEPS*ESTIMATION_STEPS], X[ESTIMATION_STEPS], P[ESTIMATION_STEPS], invA[ESTIMATION_STEPS*ESTIMATION_STEPS];
     /* temp matrices */
@@ -538,7 +538,7 @@ void speed_estimation(man_t *manip, double *v_est, double *a_est){
     }
 
     for(i = 0; i < ESTIMATION_STEPS; i++){
-        rbget(&manip->q0_actual, i, &X[i]);
+        rbget(q_actual, i, &X[i]);
     }
     /*
         x(t) = sum(p_i*t^i)
@@ -606,12 +606,27 @@ void rate_sleep(rate_t *rate){
 }
 
 
+/*
+#@
+@name: read_encoders
+@brief: reads data from both the encoders of the 2Dofs planar manipulator
+@notes: the method uses two timers to decode the signals coming from both the encoders and memorizes the measured positions of the motors, 
+taking into account the reduction ratio of each motor by means of the ARR registers of the timers (ARR=CPR*REDUCTION). 
+The method also estimates the speed and accelerations by using the timestamp method.
+@inputs: 
+- TIM_HandleTypeDef *htim1: pointer to the timer struct that decodes the first encoder;
+- TIM_HandleTypeDef *htim2: pointer to the timer struct that decodes the second encoder;
+- man_t *manip: pointer to the manipulator struct that holds both the desired and actual motor positions, speeds and accelerations;
+@outputs: outputs
+@#
+*/
 void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip){
     /*
     CNT/ARR returns a value between 0 and 1: by multiplying it by 2*pi the resulting value shows the position of the motor
     the reduction of the motor is already taken care of in the ARR value: ARR=CPR*REDUCTION -> 4x1000xreduction
     4x is caused by the timer mode (TI1 and TI2)
     */
+    double v_est, a_est; /* used to hold temporarily the estimations of speed and acceleration */
     double displacement1 = (double) (2*M_PI*(htim1->Instance->CNT)/(htim1->Instance->ARR));
     double displacement2 = (double) (2*M_PI) - (2*M_PI*(htim2->Instance->CNT)/(htim2->Instance->ARR)); /* the motor is upside down */
     if(displacement1 > 2*M_PI){
@@ -626,15 +641,22 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     if(displacement2 > M_PI){
     	displacement2 = displacement2 - (2*M_PI); /* redefining the domain between -PI and +PI */
     }
+    /* DIR bit: pag 287 of https://www.st.com/resource/en/reference_manual/rm0383-stm32f411xce-advanced-armbased-32bit-mcus-stmicroelectronics.pdf#page=287 */
     /* dir: 0 = counterclockwise, 1 = clockwise */
     uint8_t dir1 = (uint8_t) (htim1->Instance->CR1 >> 4); /* the 5th bit of the CR1 register is the DIR bit */
     uint8_t dir2 = (uint8_t) (htim2->Instance->CR1 >> 4);
     rbpush(manip->q0_actual, displacement1);
     rbpush(manip->q1_actual, displacement2);
     /* TODO: do logging of data */
-    /* TODO: implement displacement buffer */
-    /* TODO: in python-> ensure that the reference angle is between -PI and +PI */
 
+    /* speed and acceleration estimations for both motors*/
+    speed_estimation(manip->q0_actual, &v_est, &a_est);
+    rbpush(manip->dq0_actual, v_est);
+    rbpush(manip->ddq0_actual, a_est);
+
+    speed_estimation(manip->q1_actual, &v_est, &a_est);
+    rbpush(manip->dq1_actual, v_est);
+    rbpush(manip->ddq1_actual, a_est);
 
 }
 

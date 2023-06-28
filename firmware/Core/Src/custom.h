@@ -104,7 +104,7 @@ void B_calc(man_t *manip);
 void C_calc(man_t *manip);
 void controller(man_t *manip, double *u);
 void rad2stepdir(double dq, double resolution, double frequency, uint32_t *steps, int8_t *dir);
-void speed_estimation(man_t *manip, double *v_est, double *a_est);
+void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est);
 
 void init_rate(rate_t *rate, uint16_t ms);
 void rate_sleep(rate_t *rate);
