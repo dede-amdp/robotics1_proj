@@ -19,14 +19,14 @@
     * the transmission should be implemented via DMA, to be sure that execution will not be halted while the transmission is done;
     * the callback will be left alone (unless the need to use it rises);
 * [ ] implement motor control method -> taken u (the speed input) returned by the controller method, use it to control the motors;
-* [ ] implement method to read from encoders;
+* [x] implement method to read from encoders;
   * using timers, decode the encoder output signal to find the position: from the position, also compute speed and acceleration;
   * to compute the speed, use the interpolation method that the professor showed us during the lectures which uses past values of position and time instants to find the speed;
   * a method to approximated acceleration should be found and implemented;
   * The actual position, speed and acc. should be saved in the global object 'manip' in the correct struct members (check custom.h)
 * [ ] implement limit switch reading;
-  * [ ] it should be connected to an interrupt, this means that it should have a callback;
-  * [ ] the callback should (for now) stop everything to avoid damaging the manipulator;
+  * it should be connected to an interrupt, this means that it should have a callback;
+  * the callback should (for now) stop everything to avoid damaging the manipulator;
 * [ ] implement homing procedure;
   * both the arms should move in the same direction until they reach the limit switches (both of them);
   * the encoder readings will be set as initial offsets of the motor, to reset it;

@@ -575,6 +575,7 @@ def slice_trj(patch: dict, **kargs):
             if t <= dt1 : q1s.append(traj1[0](t))
             else: q1s.append(q1s[-1]) # if the trajectories don't have the same length
             ts.append(t)
+            penups.append(1)
         return q0s, q1s, penups, ts
     # here penup=0 surely
     if patch['type'] == 'line':

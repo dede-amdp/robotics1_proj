@@ -105,15 +105,10 @@ def send_data(msg_type: str, **data):
             # msg_str = f"TRJ:0:{','.join(map(str, data['q'][0]))}:{','.join(map(str, data['dq'][0]))}:{','.join(map(str, data['ddq'][0]))}"+\
             #            f":1:{','.join(map(str, data['q'][1]))}:{','.join(map(str, data['dq'][1]))}:{','.join(map(str, data['ddq'][1]))}\n" 
             #print(msg_str)
+            
             for i in range(len(data['q'])):
                 # data is converted to hex so that it always uses the same number of characters
                 # [2:] is used to remove "0x" from the string and save 2 chars per value
-                '''
-                msg_str = f"TRJ:{d2h(data['q'][0][i])[2:]}:{d2h(data['q'][1][i])[2:]}"+\
-                            f":{d2h(data['dq'][0][i])[2:]}:{d2h(data['dq'][1][i])[2:]}"+\
-                            f":{d2h(data['ddq'][0][i])[2:]}:{d2h(data['ddq'][1][i])[2:]}"+\
-                            f":{int(data['q'][2][i])}\n"
-                '''
                 msg_str = f"TRJ:{d2h(data['q'][0][i])[2:]}:{d2h(data['q'][1][i])[2:]}"+\
                             f":{d2h(data['dq'][0][i])[2:]}:{d2h(data['dq'][1][i])[2:]}"+\
                             f":{d2h(data['ddq'][0][i])[2:]}:{d2h(data['ddq'][1][i])[2:]}"+\
