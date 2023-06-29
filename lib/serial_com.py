@@ -7,10 +7,10 @@ def ser_init(serial_path:str=None) -> bool:
     print("Starting Serial Connection:\n")
     found = False
     if serial_path is None:
-        ports = [f"ttyS{i}" for i in range(4)]+[f"tty{i}" for i in range(100)]
+        ports = [f"/dev/ttyS{i}" for i in range(4)]+[f"/dev/tty{i}" for i in range(100)] + [f"COM{i}" for i in range(10)]
         for port in ports:
             try:
-                ser = serial.Serial(f"/dev/{port}", 115200, timeout=10000)  # open serial port
+                ser = serial.Serial(f"{port}", 115200, timeout=10000)  # open serial port
                 found = True
                 break
             except:

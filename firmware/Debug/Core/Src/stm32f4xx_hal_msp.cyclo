@@ -4,4 +4,4 @@ stm32f4xx_hal_msp.c:146:6:HAL_TIM_Encoder_MspInit	3
 stm32f4xx_hal_msp.c:212:6:HAL_TIM_IC_MspDeInit	3
 stm32f4xx_hal_msp.c:257:6:HAL_TIM_Encoder_MspDeInit	3
 stm32f4xx_hal_msp.c:308:6:HAL_UART_MspInit	3
-stm32f4xx_hal_msp.c:369:6:HAL_UART_MspDeInit	2
+stm32f4xx_hal_msp.c:366:6:HAL_UART_MspDeInit	2
