@@ -14,7 +14,7 @@ def ser_init(serial_path:str=None) -> bool:
                 found = True
                 break
             except:
-                print(f"/dev/{port} failed\n")
+                print(f"{port} failed\n")
         if found:
             print(f"{ser.name} works\n")         # check which port was really used
         else:
