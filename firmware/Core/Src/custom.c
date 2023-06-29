@@ -11,6 +11,10 @@
 uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
 uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
 man_t manip;
+
+uint32_t previous_trigger = 0;
+uint8_t triggered = 0;
+
 /* controller parameters */
 const double Kp[4] = {1,0,0,1}; 
 const double Kd[4] = {1,0,0,1};
@@ -46,10 +50,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     // TODO: Implement limit switch handling
-    uint8_t limit_switch = 1;
-    // SECTION - DEBUG
-    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    // !SECTION - DEBUG
+    uint32_t now;
+    now = HAL_GetTick();
+    if((now - previous_trigger) > DEBOUNCE_DELAY){
+        if(!triggered){
+            uint8_t limit_switch = 1;
+            // SECTION - DEBUG
+            HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+            // !SECTION - DEBUG
+        }
+        triggered = 1-triggered;
+        previous_trigger = now;
+    }
 }
 
 /*
@@ -669,6 +681,10 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     rbpush(&manip->dq1_actual, v_est);
     rbpush(&manip->ddq1_actual, a_est);
 
+}
+
+void apply_input(){
+    
 }
 
 

@@ -20,6 +20,8 @@ bytes:
 #define RESOLUTION 0.0314
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 10
+/* Debounce delay macro */
+#define DEBOUNCE_DELAY 50
 
 /* matrix determinant macro */
 #define DET(matrix) matrix[0]*matrix[3]-matrix[1]*matrix[2]
@@ -81,6 +83,10 @@ typedef struct rate {
 extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
 extern uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
 extern man_t manip;
+
+extern uint32_t previous_trigger;
+extern uint8_t triggered;
+
 /* controller parameters */
 extern const double Kp[4];
 extern const double Kd[4];
@@ -109,5 +115,6 @@ void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);
 
 void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip);
+void apply_input();
 
 #endif
