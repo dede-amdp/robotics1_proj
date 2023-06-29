@@ -13,7 +13,7 @@ def ser_init(serial_path:str=None) -> bool:
                 ser = serial.Serial(f"{port}", 115200, timeout=10000)  # open serial port
                 found = True
                 break
-            except:
+            except Exception as e:
                 print(f"{port} failed\n")
         if found:
             print(f"{ser.name} works\n")         # check which port was really used

@@ -79,6 +79,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
   rate_t rate;
   double v[2];
+  char *data = "Hello World";
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
   /* USER CODE END 1 */
@@ -122,11 +123,14 @@ int main(void)
     read_encoders(&htim3, &htim4, &manip);
     controller(&manip, v); /* apply the control law to find the input */
     /* change the input from [rad/s] to [steps] and [direction] (stepdir) */
-    //rad2stepdir(v[0], (double) RESOLUTION, (double) 1/T_C, &steps0, &dir0); /* first motor */
-    //rad2stepdir(v[1], (double) RESOLUTION, (double) 1/T_C, &steps1, &dir1); /* second motor */
+    // rad2stepdir(v[0], (double) RESOLUTION, (double) 1/T_C, &steps0, &dir0); /* first motor */
+    // rad2stepdir(v[1], (double) RESOLUTION, (double) 1/T_C, &steps1, &dir1); /* second motor */
     /* apply the inputs to the motors */
     // TODO: implement methods to apply inputs to motors !!
     apply_input(&htim2, &htim5, v);
+    // SECTION - DEBUG
+    HAL_UART_Transmit(&huart2, data, 11, 10000);
+    // !SECTION - DEBUG
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
