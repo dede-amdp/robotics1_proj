@@ -78,9 +78,9 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   rate_t rate;
-  double u[2];
-  uint32_t steps0, steps1;
-  int8_t dir0, dir1;
+  double v[2];
+  //uint32_t steps0, steps1;
+  //int8_t dir0, dir1;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -116,26 +116,24 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   /* start timers */
-  HAL_TIM_Base_Start_IT(&htim3);
-  HAL_TIM_Base_Start_IT(&htim4);
+  start_timers(&htim3, &htim4, &htim2, &htim5);
   while (1)
   {
     read_encoders(&htim3, &htim4, &manip);
-    controller(&manip, u); /* apply the control law to find the input */
+    controller(&manip, v); /* apply the control law to find the input */
     /* change the input from [rad/s] to [steps] and [direction] (stepdir) */
-    rad2stepdir(u[0], (double) RESOLUTION, (double) 1/T_C, &steps0, &dir0); /* first motor */
-    rad2stepdir(u[1], (double) RESOLUTION, (double) 1/T_C, &steps1, &dir1); /* second motor */
+    //rad2stepdir(v[0], (double) RESOLUTION, (double) 1/T_C, &steps0, &dir0); /* first motor */
+    //rad2stepdir(v[1], (double) RESOLUTION, (double) 1/T_C, &steps1, &dir1); /* second motor */
     /* apply the inputs to the motors */
     // TODO: implement methods to apply inputs to motors !!
-    apply_input();
+    apply_input(&htim2, &htim5, v);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
     rate_sleep(&rate); /* wait with a fixed frequency */
   }
   /* stop timers */
-  HAL_TIM_Base_Stop_IT(&htim3);
-  HAL_TIM_Base_Stop_IT(&htim4);
+  stop_timers(&htim3, &htim4, &htim2, &htim5);
   /* USER CODE END 3 */
 }
 

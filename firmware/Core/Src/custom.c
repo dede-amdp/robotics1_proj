@@ -683,8 +683,45 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
 
 }
 
-void apply_input(){
-    
+void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, double *u){
+    /* T_C = steps*clock_period */
+    int8_t dir;
+    uint32_t steps, ARR, CCR;
+    double clock_period;
+
+    rad2stepdir(u[0], RESOLUTION, (double) 1/T_C, &steps, &dir);
+    clock_period = T_C/steps;
+    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*clock_period); /* read clock frequency for APB1 */
+    CCR = (uint32_t) ARR/2;
+
+    __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+    __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+    htim1->Instance->EGR = TIM_EGR_UG;
+
+    rad2stepdir(u[1], RESOLUTION, (double) 1/T_C, &steps, &dir);
+    clock_period = T_C/steps;
+    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*clock_period); /* read clock frequency for APB1 */
+    CCR = (uint32_t) ARR/2;
+
+    __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+    __HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+    htim2->Instance->EGR = TIM_EGR_UG;
+}
+
+void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
+    HAL_TIM_Base_Start_IT(htim1);
+    HAL_TIM_Base_Start_IT(htim2);
+    /* start motor PWM */
+    HAL_TIM_Base_Start_IT(htim3);
+    HAL_TIM_Base_Start_IT(htim4);
+}
+
+void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
+    HAL_TIM_Base_Stop_IT(htim1);
+    HAL_TIM_Base_Stop_IT(htim2);
+    /* stop motor PWM */
+    HAL_TIM_Base_Stop_IT(htim3);
+    HAL_TIM_Base_Stop_IT(htim4);
 }
 
 
