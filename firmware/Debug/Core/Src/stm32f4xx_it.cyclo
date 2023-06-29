@@ -11,3 +11,4 @@ stm32f4xx_it.c:207:6:DMA1_Stream5_IRQHandler	1
 stm32f4xx_it.c:221:6:TIM3_IRQHandler	1
 stm32f4xx_it.c:235:6:TIM4_IRQHandler	1
 stm32f4xx_it.c:249:6:USART2_IRQHandler	1
+stm32f4xx_it.c:263:6:EXTI15_10_IRQHandler	1

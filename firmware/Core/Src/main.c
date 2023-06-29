@@ -103,7 +103,7 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   init_man(&manip); /* initialize the manipulator struct */
-  init_rate(&rate, T_C); /* initialize the rate struct */
+  init_rate(&rate, (uint32_t) (T_C*1000)); /* initialize the rate struct */
   HAL_UART_Receive_DMA(&huart2, (uint8_t*) &rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
   /* USER CODE END 2 */
 
@@ -357,6 +357,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LIMIT_SWITCH_1_Pin LIMIT_SWITCH_2_Pin */
+  GPIO_InitStruct.Pin = LIMIT_SWITCH_1_Pin|LIMIT_SWITCH_2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

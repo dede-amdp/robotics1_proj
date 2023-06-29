@@ -41,7 +41,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
     }
     /* wait again for incoming data */
-    HAL_UART_Receive_DMA(&huart, &rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
+    HAL_UART_Receive_DMA(huart, rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+    // TODO: Implement limit switch handling
+    uint8_t limit_switch = 1;
+    // SECTION - DEBUG
+    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    // !SECTION - DEBUG
 }
 
 /*
@@ -264,7 +272,7 @@ void det(double *M, uint8_t n, double *d){
 */
 uint8_t inv(double *M, double *adjM, double *subM, double *trM, uint8_t n, double *invM){
     /* cofM and trM are passed by the user so that the size of the arrays are controlled by the user */
-    uint8_t i,j;
+    uint8_t i;
     double d;
     for(i = 0; i < n*n; i++){
         trM[i] = M[i]; // copy temporarily matrix M in trM
@@ -465,8 +473,8 @@ void controller(man_t *manip, double *u){
     diff(q, q_actual, 2, ep); /* q - q_d */
     diff(dq, dq_actual, 2, ed); /* dq - dq_d */
 
-    dot(Kp, 2, 2, ep, 2, 1, Kpep); /* Kp*ep */
-    dot(Kd, 2, 2, ed, 2, 1, Kded); /* Kd*ed */
+    dot((double *) Kp, 2, 2, ep, 2, 1, Kpep); /* Kp*ep */
+    dot((double *) Kd, 2, 2, ed, 2, 1, Kded); /* Kd*ed */
 
     /* y = Kp*e_p + Kd*e_d + ddq */
     sum(Kpep, Kded, 2, y);
@@ -529,7 +537,7 @@ void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est){
     double adjM[ESTIMATION_STEPS*ESTIMATION_STEPS], subM[(ESTIMATION_STEPS-1)*(ESTIMATION_STEPS-1)];
     double invM[ESTIMATION_STEPS*ESTIMATION_STEPS], dotM[ESTIMATION_STEPS*ESTIMATION_STEPS];
 
-    now = (double) NOW_TIME; /* time passed from when the process launch */
+    now = (double) HAL_GetTick(); /* time passed from when the process launch */
     uint8_t i,j;
     for(i = 0; i < ESTIMATION_STEPS; i++){
         for(j = 0; j < ESTIMATION_STEPS; j++){
@@ -571,13 +579,13 @@ void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est){
 @brief: initializes the rate struct
 @inputs: 
 - rate_t *rate: pointer to the rate struct to initialize;
-- uint16_t ms: number of millisecond that define the rate;
+- uint32_t ms: number of millisecond that define the rate;
 @outputs: 
 - void;
 @#
 */
-void init_rate(rate_t *rate, uint16_t ms){
-    rate->last_time = (double) NOW_TIME;
+void init_rate(rate_t *rate, uint32_t ms){
+    rate->last_time = HAL_GetTick();
     rate->delta_time = ms;
 }
 
@@ -593,12 +601,12 @@ void init_rate(rate_t *rate, uint16_t ms){
 */
 void rate_sleep(rate_t *rate){
     double now, interval;
-    now = (double) NOW_TIME;
-    interval = (double) (now - rate->last_time); /* time passed from the last rate_sleep call */
+    now = HAL_GetTick();
+    interval = (uint32_t) (now - rate->last_time); /* time passed from the last rate_sleep call */
     /* wait until enough time has passed from the last rate_sleep call */
     while( interval < rate->delta_time){
-        now = (double) NOW_TIME;
-        interval = (double) (now - rate->last_time);
+        now = HAL_GetTick();
+        interval = (uint32_t) (now - rate->last_time);
     }
     /* if enough time has passed, save the time stamp and go on with the process */
     rate->last_time = now;
@@ -643,20 +651,23 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     }
     /* DIR bit: pag 287 of https://www.st.com/resource/en/reference_manual/rm0383-stm32f411xce-advanced-armbased-32bit-mcus-stmicroelectronics.pdf#page=287 */
     /* dir: 0 = counterclockwise, 1 = clockwise */
-    uint8_t dir1 = (uint8_t) (htim1->Instance->CR1 >> 4); /* the 5th bit of the CR1 register is the DIR bit */
-    uint8_t dir2 = (uint8_t) (htim2->Instance->CR1 >> 4);
-    rbpush(manip->q0_actual, displacement1);
-    rbpush(manip->q1_actual, displacement2);
+    /* the 5th bit of the CR1 register is the DIR bit */
+    /*
+    uint8_t dir1 = (uint8_t) (htim1->Instance->CR1 >> 4) & 1;
+    uint8_t dir2 = (uint8_t) (htim2->Instance->CR1 >> 4) & 1;
+    */
+    rbpush(&manip->q0_actual, displacement1);
+    rbpush(&manip->q1_actual, displacement2);
     /* TODO: do logging of data */
 
     /* speed and acceleration estimations for both motors*/
-    speed_estimation(manip->q0_actual, &v_est, &a_est);
-    rbpush(manip->dq0_actual, v_est);
-    rbpush(manip->ddq0_actual, a_est);
+    speed_estimation(&manip->q0_actual, &v_est, &a_est);
+    rbpush(&manip->dq0_actual, v_est);
+    rbpush(&manip->ddq0_actual, a_est);
 
-    speed_estimation(manip->q1_actual, &v_est, &a_est);
-    rbpush(manip->dq1_actual, v_est);
-    rbpush(manip->ddq1_actual, a_est);
+    speed_estimation(&manip->q1_actual, &v_est, &a_est);
+    rbpush(&manip->dq1_actual, v_est);
+    rbpush(&manip->ddq1_actual, a_est);
 
 }
 

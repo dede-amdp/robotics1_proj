@@ -23,8 +23,7 @@ bytes:
 
 /* matrix determinant macro */
 #define DET(matrix) matrix[0]*matrix[3]-matrix[1]*matrix[2]
-/* get seconds from process start */
-#define NOW_TIME  ((double) clock())/((double) CLOCKS_PER_SEC)
+
 /* SIGN macro */
 #define SIGN(A) (int8_t) ((A >= 0) - (A <= 0))
 
@@ -75,8 +74,8 @@ typedef struct manipulator {
 } man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
 
 typedef struct rate {
-    double last_time;
-    uint16_t delta_time;     /* in ms */
+    uint32_t last_time;
+    uint32_t delta_time;     /* in ms */
 } rate_t;
 
 extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
@@ -106,7 +105,7 @@ void controller(man_t *manip, double *u);
 void rad2stepdir(double dq, double resolution, double frequency, uint32_t *steps, int8_t *dir);
 void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est);
 
-void init_rate(rate_t *rate, uint16_t ms);
+void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);
 
 void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip);
