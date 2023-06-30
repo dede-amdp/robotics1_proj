@@ -13,11 +13,15 @@ bytes:
 
 (3+8+48+1) = 60 (bytes) -> use 64 bytes just in case longer messages are needed
 */
-#define DATA_SZ 64
+#define DATA_SZ 76
 /* CONTROL TIME */
 #define T_C 0.01
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
-#define RESOLUTION 0.0314
+#define RESOLUTION 0.0314159
+/* MAX SPEED of rotation of the motors (in rads/s) */
+#define MAX_SPEED 1.63
+/* PWM frequency */
+#define PWM_FREQ 2000
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 10
 /* Debounce delay macro */
@@ -115,7 +119,7 @@ void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);
 
 void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip);
-void apply_input();
+void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, double *u);
 
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);

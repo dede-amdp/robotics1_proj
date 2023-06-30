@@ -19,24 +19,28 @@ uint8_t triggered = 0;
 const double Kp[4] = {1,0,0,1}; 
 const double Kd[4] = {1,0,0,1};
 /* reduction values for motors */
-const uint8_t reduction1 = 1; //10;
-const uint8_t reduction2 = 1; // 5;
+const uint8_t reduction1 = 10;
+const uint8_t reduction2 = 5;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-    char *cmd, *data, *value;
+    char *cmd, *data;
+    double value;
+    unsigned long long encoding;
     uint8_t i = 0;
     /* read the first characters */
-    cmd = strtok((char*) &rx_data, ":");
-    if(strcmp(cmd, "trj")){ /* trj case*/
+    cmd = strtok((char*) rx_data, ":");
+    if(strcmp(cmd, "TRJ")){ /* trj case*/
         /* READ the data from the serial and populate the corresponding members of the man_t struct 
            these values will be used to set the reference value for the control loop */
         data = strtok(NULL, ":");
         while(data != NULL){
             if(i == 6) break; /* reading penup */
-            value = "0x"; /* will contain the value extracted from the received string */
-            strcat(value, data); /* string concatenation REF: https://www.programiz.com/c-programming/library-function/string.h/strcat */
-            rbpush((((ringbuffer_t *) &manip)+i),  strtoull(value, NULL, 16)); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
+            // value = "0x"; /* will contain the value extracted from the received string */
+            encoding = strtoull(data, NULL, 16);
+            memcpy(&value, &encoding, sizeof value);
+            // value = strcat(value, data); /* string concatenation REF: https://www.programiz.com/c-programming/library-function/string.h/strcat */
+            rbpush((((ringbuffer_t *) &manip)+i), value); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
             data = strtok(NULL, ":");
             i++;
         }
@@ -465,6 +469,7 @@ void controller(man_t *manip, double *u){
     double q[2], dq[2], ddq[2], q_actual[2], dq_actual[2], ddq_actual[2];
     double ep[2], ed[2], y[2], tau[2], Kpep[2], Kded[2], By[2], Cdq[2];
     double Bddq[2], invC[4], result[2];
+    double d;
 
     /* data preparation */
     rbpop(&manip->q0, &q[0]);
@@ -495,6 +500,15 @@ void controller(man_t *manip, double *u){
     dot(manip->B, 2, 2, y, 2, 1, By); /* B*y */
     dot(manip->C, 2, 2, dq_actual, 2, 1, Cdq); /* C*dq */
     sum(By, Cdq, 2, tau); /* tau = B*y+C*dq  */
+
+    // TODO: TEST THIS SHIT
+
+    det(manip->C, 2, &d);
+    if(d == 0){
+        *u = dq[0];
+        *(u+1) = dq[1];
+        return;
+    }
 
     dot(manip->B, 2, 2, ddq_actual, 2, 1, Bddq); /* B*ddq */
     diff(tau, Bddq, 2, result); /* tau - B*ddq */
@@ -548,6 +562,15 @@ void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est){
     double trM[ESTIMATION_STEPS*ESTIMATION_STEPS], tempM[ESTIMATION_STEPS*ESTIMATION_STEPS];
     double adjM[ESTIMATION_STEPS*ESTIMATION_STEPS], subM[(ESTIMATION_STEPS-1)*(ESTIMATION_STEPS-1)];
     double invM[ESTIMATION_STEPS*ESTIMATION_STEPS], dotM[ESTIMATION_STEPS*ESTIMATION_STEPS];
+
+
+    if(q_actual->length < 10){
+        rbpeek(q_actual,&X[0]);
+        /* if not enough data is available, apply simple estimation */
+        *v_est = X[0]/T_C;
+        *a_est = *v_est/T_C;
+        return;
+    }
 
     now = (double) HAL_GetTick(); /* time passed from when the process launch */
     uint8_t i,j;
@@ -616,12 +639,9 @@ void rate_sleep(rate_t *rate){
     now = HAL_GetTick();
     interval = (uint32_t) (now - rate->last_time); /* time passed from the last rate_sleep call */
     /* wait until enough time has passed from the last rate_sleep call */
-    while( interval < rate->delta_time){
-        now = HAL_GetTick();
-        interval = (uint32_t) (now - rate->last_time);
-    }
+    HAL_Delay(interval);
     /* if enough time has passed, save the time stamp and go on with the process */
-    rate->last_time = now;
+    rate->last_time = HAL_GetTick();
     return;
 }
 
@@ -689,23 +709,48 @@ void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, double *u){
     uint32_t steps, ARR, CCR;
     double clock_period;
 
-    rad2stepdir(u[0], RESOLUTION, (double) 1/T_C, &steps, &dir);
-    clock_period = T_C/steps;
-    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*clock_period); /* read clock frequency for APB1 */
+    /*
+    ARR = (uint32_t) 65000;
     CCR = (uint32_t) ARR/2;
-
     __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
     __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
     htim1->Instance->EGR = TIM_EGR_UG;
+    */
+    // rad2stepdir(u[0], RESOLUTION, (double) 1/T_C, &steps, &dir);
+    ARR = (uint32_t) HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ-1); // FIXME - change *2 with *PRESCALER
+    CCR = (uint32_t) (abs(u[1])/MAX_SPEED)*(ARR - 1);
+    __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+    __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+    htim1->Instance->EGR = TIM_EGR_UG;
+    
 
-    rad2stepdir(u[1], RESOLUTION, (double) 1/T_C, &steps, &dir);
-    clock_period = T_C/steps;
-    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*clock_period); /* read clock frequency for APB1 */
-    CCR = (uint32_t) ARR/2;
 
-    __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
-    __HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
-    htim2->Instance->EGR = TIM_EGR_UG;
+    // rad2stepdir(u[0], RESOLUTION, (double) 1/T_C, &steps, &dir);
+    // if(steps > 0){
+    //     clock_period = T_C/(steps*reduction1);
+    // }else{
+    //     clock_period = 0;
+    // }
+    // uint32_t mamt = HAL_RCC_GetPCLK1Freq()*2;
+    // ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2*clock_period); /* read clock frequency for APB1 */
+    // CCR = (uint32_t) ARR/2;
+// 
+    // __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+    // __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+    // htim1->Instance->EGR = TIM_EGR_UG;
+// 
+    // rad2stepdir(u[1], RESOLUTION, (double) 1/T_C, &steps, &dir);
+    // if(steps > 0){
+    //     clock_period = T_C/(steps*reduction2);
+    // }else{
+    //     clock_period = 0;
+    // }
+    // ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*clock_period); /* read clock frequency for APB1 */
+    // CCR = (uint32_t) ARR/2;
+// 
+    // __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+    // __HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+    // htim2->Instance->EGR = TIM_EGR_UG;
 }
 
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
@@ -714,6 +759,13 @@ void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_Handle
     /* start motor PWM */
     HAL_TIM_Base_Start_IT(htim3);
     HAL_TIM_Base_Start_IT(htim4);
+    /* start PWM */
+    if(HAL_TIM_PWM_Start(htim3, TIM_CHANNEL_1) != HAL_OK){
+        HardFault_Handler();
+    }
+    if(HAL_TIM_PWM_Start(htim4, TIM_CHANNEL_1) != HAL_OK){
+        HardFault_Handler();
+    }
 }
 
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){

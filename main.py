@@ -16,8 +16,8 @@ from lib import serial_com as scm # serial communication library
 import traceback
 
 settings = {
-    'Tc' : 1e-2, # s
-    'data_rate': 1/50, # rate at which msgs are sent
+    'Tc' : 0.01, # s
+    'data_rate': 1/100, # rate at which msgs are sent
     'max_acc' : 1.05, #1.05, # rad/s**2
     'ser_started': False,
     'line_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t), # timing laws for line and circle segments
@@ -92,7 +92,7 @@ def d2h(d: float): # double to hex
     # q = long (double)
     # d = double
     # check: https://docs.python.org/2/library/struct.html
-    return hex(unpack('<q', pack('<d', d))[0])
+    return hex(unpack('<Q', pack('<d', d))[0])
 
 
 
@@ -105,15 +105,22 @@ def send_data(msg_type: str, **data):
             # msg_str = f"TRJ:0:{','.join(map(str, data['q'][0]))}:{','.join(map(str, data['dq'][0]))}:{','.join(map(str, data['ddq'][0]))}"+\
             #            f":1:{','.join(map(str, data['q'][1]))}:{','.join(map(str, data['dq'][1]))}:{','.join(map(str, data['ddq'][1]))}\n" 
             #print(msg_str)
-            
-            for i in range(len(data['q'])):
+
+            for i in range(len(data['q'][0])):
                 # data is converted to hex so that it always uses the same number of characters
                 # [2:] is used to remove "0x" from the string and save 2 chars per value
-                msg_str = f"TRJ:{d2h(data['q'][0][i])[2:]}:{d2h(data['q'][1][i])[2:]}"+\
-                            f":{d2h(data['dq'][0][i])[2:]}:{d2h(data['dq'][1][i])[2:]}"+\
-                            f":{d2h(data['ddq'][0][i])[2:]}:{d2h(data['ddq'][1][i])[2:]}"+\
+                # msg_str = f"TRJ:{d2h(data['q'][0][i])[2:]}:{d2h(data['q'][1][i])[2:]}"+\
+                #             f":{d2h(data['dq'][0][i])[2:]}:{d2h(data['dq'][1][i])[2:]}"+\
+                #             f":{d2h(data['ddq'][0][i])[2:]}:{d2h(data['ddq'][1][i])[2:]}"+\
+                #             f":{int(data['q'][2][i])}\n"
+                
+                msg_str = f"TRJ:{d2h(data['q'][0][i])}:{d2h(data['q'][1][i])}"+\
+                            f":{d2h(data['dq'][0][i])}:{d2h(data['dq'][1][i])}"+\
+                            f":{d2h(data['ddq'][0][i])}:{d2h(data['ddq'][1][i])}"+\
                             f":{int(data['q'][2][i])}\n"
+
                 scm.write_serial(msg_str) # send data through the serial com
+
                 pos = tpy.dk([data['q'][0][i], data['q'][1][i]], sizes)
                 log(
                     time=i*settings['Tc'],
@@ -129,6 +136,7 @@ def send_data(msg_type: str, **data):
                 # TODO: when reading the actual data from the manipulator, update the remaining data
                 # it does not matter if the update is done in another moment, it still refers to the time when the reference signal is applied
                 tsleep(settings['data_rate']) # regulate the speed at which data is sent
+            print(F"TRJ SENT") # DEBUG
 
 def trace_trajectory(q:tuple[list,list]):
     q1 = q[0][:]
@@ -174,7 +182,7 @@ def py_get_data():
             q1s += q1s_p if len(q1s) == 0 else q1s_p[1:] # ignoring the starting and ending values of consecutive patches avoids diverging accelerations
             penups += penups_p if len(penups) == 0 else penups_p[1:]
             ts += [(t + ts[-1] if len(ts) > 0  else t) for t in (ts_p if len(ts) == 0 else ts_p[1:])] # each trajectory starts from 0: the i-th patch has to start in reality from the (i-1)-th final time instant
-        
+
         q = (q0s, q1s, penups)
         dq = (tpy.find_velocities(q[0], ts), tpy.find_velocities(q[1], ts))
         ddq = (tpy.find_accelerations(dq[0], ts), tpy.find_accelerations(dq[1], ts))

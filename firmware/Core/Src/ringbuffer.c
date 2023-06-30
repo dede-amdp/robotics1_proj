@@ -40,6 +40,7 @@ rberror_t rbpush(ringbuffer_t *buffer, rbelement_t data){
 */
 rberror_t rbpop(ringbuffer_t *buffer, rbelement_t *data){
     if(buffer->length == 0){
+        *data = buffer->buffer[buffer->head]; /* avoids random values in data */
         return 0; /* pop operation could not be completed because the buffer is empty */
     }
     *data = buffer->buffer[buffer->head];

@@ -594,7 +594,7 @@ def slice_trj(patch: dict, **kargs):
         q0s.append(qt[0])
         q1s.append(qt[1])
         penups.append(0)
-    
+
     return q0s, q1s, penups, ts
 
 
