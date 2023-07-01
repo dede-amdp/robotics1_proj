@@ -128,10 +128,9 @@ int main(void)
 	PLUTO = (GPIOA->ODR>>15)&1;
 	// !SECTION - DEBUG
     read_encoders(&htim3, &htim4, &manip);
+    /* log data */
+    log_data(&huart2, &manip);
     controller(&manip, v); /* apply the control law to find the input */
-    /* change the input from [rad/s] to [steps] and [direction] (stepdir) */
-    // rad2stepdir(v[0], (double) RESOLUTION, (double) 1/T_C, &steps0, &dir0); /* first motor */
-    // rad2stepdir(v[1], (double) RESOLUTION, (double) 1/T_C, &steps1, &dir1); /* second motor */
     /* apply the inputs to the motors */
 
     // SECTION - DEBUG
@@ -139,7 +138,6 @@ int main(void)
     HAL_UART_Transmit(&huart2, (uint8_t *) &data, 2, 10000);
     // !SECTION - DEBUG
 
-    // TODO: implement methods to apply inputs to motors !!
     apply_input(&htim2, &htim5, v);
     /* USER CODE END WHILE */
 

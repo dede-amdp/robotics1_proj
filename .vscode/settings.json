@@ -1,6 +1,7 @@
 {
     "files.associations": {
-        "main.h": "c"
+        "main.h": "c",
+        "custom.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

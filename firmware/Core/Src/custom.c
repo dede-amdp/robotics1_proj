@@ -565,7 +565,7 @@ void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est){
 
 
     if(q_actual->length < 10){
-        rbpeek(q_actual,&X[0]);
+        rblast(q_actual,&X[0]); /* get newest value */
         /* if not enough data is available, apply simple estimation */
         *v_est = X[0]/T_C;
         *a_est = *v_est/T_C;
@@ -776,6 +776,20 @@ void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleT
     HAL_TIM_Base_Stop_IT(htim4);
 }
 
+void log_data(UART_HandleTypeDef *huart, man_t *manip){
+    unsigned long long encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d, timestamp;
+    double q;
+    rblast(&manip->q0_actual, &q);
+    memcpy(&encoding_q0, &q, sizeof q);
+    rblast(&manip->q1_actual, &q);
+    memcpy(&encoding_q1, &q, sizeof q);
+    rbpeek(&manip->q0, &q);
+    memcpy(&encoding_q0_d, &q, sizeof q);
+    rbpeek(&manip->q1, &q);
+    memcpy(&encoding_q1_d, &q, sizeof q);
+    sprintf(&tx_data, "%x:%x:%x:%x:%x", timestamp, encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d); /*Timestamp:q0:q1*/
+    HAL_UART_Transmit_DMA(&huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for logging purposes */
+}
 
 
 

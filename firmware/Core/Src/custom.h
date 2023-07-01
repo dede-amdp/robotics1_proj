@@ -5,15 +5,17 @@
 #ifndef CUSTOM_DEF
 #define CUSTOM_DEF
 /*
+TRJ:q0:dq0:ddq0:q1:dq1:ddq1:penup
+
 bytes:
 3 for the command string (3 chars)
-+8 for each ":" char (may be less)
-+6*2 for each value sent via the trj command (6 values of 64 bits -> 48 bytes)
++7 for each ":" char (may be less)
++6*18 bytes (18 characters to represent "0x"+hex)
 +1 for the penup value which is 1 or 0
 
-(3+8+48+1) = 60 (bytes) -> use 64 bytes just in case longer messages are needed
+= 119 (bytes) -> use 128 bytes just in case longer messages are needed
 */
-#define DATA_SZ 76
+#define DATA_SZ 128
 /* CONTROL TIME */
 #define T_C 0.01
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
@@ -123,5 +125,7 @@ void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, double *u);
 
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
+
+void log_data(UART_HandleTypeDef *huart, man_t *manip);
 
 #endif
