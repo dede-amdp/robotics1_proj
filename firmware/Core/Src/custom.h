@@ -100,6 +100,7 @@ extern const double Kd[4];
 extern const uint8_t reduction1;
 extern const uint8_t reduction2;
 
+
 void init_man(man_t *manip);
 uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB, double* C);
 void sum(double *A, double *B, uint8_t n, double *C);

@@ -505,6 +505,8 @@ void controller(man_t *manip, double *u){
 
     det(manip->C, 2, &d);
     if(d == 0){
+        /* if C is not invertible, use the desired values as inputs */
+        // TODO: Test and see if it works, otherwise use discrete integration
         *u = dq[0];
         *(u+1) = dq[1];
         return;
@@ -777,7 +779,8 @@ void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleT
 }
 
 void log_data(UART_HandleTypeDef *huart, man_t *manip){
-    unsigned long long encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d, timestamp;
+    unsigned long long encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
+    uint32_t timestamp;
     double q;
     rblast(&manip->q0_actual, &q);
     memcpy(&encoding_q0, &q, sizeof q);
@@ -787,6 +790,7 @@ void log_data(UART_HandleTypeDef *huart, man_t *manip){
     memcpy(&encoding_q0_d, &q, sizeof q);
     rbpeek(&manip->q1, &q);
     memcpy(&encoding_q1_d, &q, sizeof q);
+    timestamp = HAL_GetTick();
     sprintf(&tx_data, "%x:%x:%x:%x:%x", timestamp, encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d); /*Timestamp:q0:q1*/
     HAL_UART_Transmit_DMA(&huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for logging purposes */
 }
