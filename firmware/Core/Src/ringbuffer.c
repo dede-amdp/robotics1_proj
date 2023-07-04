@@ -63,6 +63,7 @@ rberror_t rbpop(ringbuffer_t *buffer, rbelement_t *data){
 */
 rberror_t rbpeek(ringbuffer_t *buffer, rbelement_t *data){
     if(buffer->length == 0){
+    	*data = buffer->buffer[buffer->head]; /* avoids having random values as output */
         return 0; /* peek operation could not be completed because the buffer is empty */
     }
     *data = buffer->buffer[buffer->head];
@@ -82,6 +83,7 @@ rberror_t rbpeek(ringbuffer_t *buffer, rbelement_t *data){
 */
 rberror_t rblast(ringbuffer_t *buffer, rbelement_t *data){
     if(buffer->length == 0){
+    	*data = buffer->buffer[buffer->head]; /* avoids having random values as output */
         return 0; // operation failed
     }
     uint8_t index = buffer->tail-1;

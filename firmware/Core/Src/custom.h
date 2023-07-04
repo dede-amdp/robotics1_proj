@@ -23,11 +23,15 @@ bytes:
 /* MAX SPEED of rotation of the motors (in rads/s) */
 #define MAX_SPEED 1.63
 /* PWM frequency */
-#define PWM_FREQ 2000
+#define PWM_FREQ 3000
 /* Number of previous values to use for speed and acceleration estimation */
-#define ESTIMATION_STEPS 10
+#define ESTIMATION_STEPS 3
 /* Debounce delay macro */
 #define DEBOUNCE_DELAY 50
+/* Microstepping */
+#define MICROSTEPS 16
+/* THRESHOLD */
+#define THRESHOLD 5*3.14159*(1/180)
 
 /* matrix determinant macro */
 #define DET(matrix) matrix[0]*matrix[3]-matrix[1]*matrix[2]
@@ -100,6 +104,9 @@ extern const double Kd[4];
 extern const uint8_t reduction1;
 extern const uint8_t reduction2;
 
+extern uint8_t dir2_global;
+extern float global_var;
+extern uint16_t cnt;
 
 void init_man(man_t *manip);
 uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB, double* C);

@@ -3,6 +3,7 @@
 #include<stdint.h>  /* used for types like uint8_t and similar */
 #include<string.h>  /* used for string manipulation via serial */
 #include<stdlib.h>  /* used for string manipulation via serial */
+#include<stdio.h>
 #include<math.h>    /* used for sin and cos */
 #include<time.h>    /* used for fixing the while looping rate */
 #include "main.h"
@@ -16,11 +17,15 @@ uint32_t previous_trigger = 0;
 uint8_t triggered = 0;
 
 /* controller parameters */
-const double Kp[4] = {1,0,0,1}; 
-const double Kd[4] = {1,0,0,1};
+const double Kp[4] = {0.05,0,0,0.05};
+const double Kd[4] = {0.05,0,0,0.05};
 /* reduction values for motors */
 const uint8_t reduction1 = 10;
 const uint8_t reduction2 = 5;
+
+uint8_t dir2_global;
+float global_var;
+uint16_t cnt;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
@@ -224,6 +229,7 @@ void det(double *M, uint8_t n, double *d){
     }
     if(n == 2){
         *d = DET(M);
+        return;
     }
     /*  
         Via transformations that do not change the determinant of a matrix, 
@@ -233,11 +239,11 @@ void det(double *M, uint8_t n, double *d){
         1. row exchange: A_j exchanged with A_i-> detB = -detA;
         2. row subtraction: A_j -= k*A_i -> detB = detA;
     */
-    found = 0; 
     det_sign = 1;
     for(k = 0; k < n; k++){
+        found = 0; 
         for(i = k; i < n; i++){
-            if(M[i*n] != 0){
+            if(M[i*n+k] != 0){
                 found = 1;
                 if(i != k){
                     det_sign *=-1; /* keep track of sign change */
@@ -256,7 +262,7 @@ void det(double *M, uint8_t n, double *d){
         }
         /* row subtraction */
         for(i = k+1; i < n; i++){
-            factor = (double) (M[i*n]/M[k*n]);
+            factor = (double) (M[i*n+k]/M[k*n+k]);
             for(j = k; j < n; j++){
                 M[i*n+j] -= M[k*n+j]*factor;
             }
@@ -470,6 +476,7 @@ void controller(man_t *manip, double *u){
     double ep[2], ed[2], y[2], tau[2], Kpep[2], Kded[2], By[2], Cdq[2];
     double Bddq[2], invC[4], result[2];
     double d;
+    uint8_t i;
 
     /* data preparation */
     rbpop(&manip->q0, &q[0]);
@@ -490,6 +497,12 @@ void controller(man_t *manip, double *u){
     diff(q, q_actual, 2, ep); /* q - q_d */
     diff(dq, dq_actual, 2, ed); /* dq - dq_d */
 
+    ep[0] = abs(ep[0]) < THRESHOLD ? 0:ep[0];
+    ep[1] = abs(ep[1]) < THRESHOLD ? 0:ep[1];
+
+    ed[0] = abs(ed[0]) < THRESHOLD ? 0:ed[0];
+    ed[1] = abs(ed[1]) < THRESHOLD ? 0:ed[1];
+
     dot((double *) Kp, 2, 2, ep, 2, 1, Kpep); /* Kp*ep */
     dot((double *) Kd, 2, 2, ed, 2, 1, Kded); /* Kd*ed */
 
@@ -503,7 +516,7 @@ void controller(man_t *manip, double *u){
 
     // TODO: TEST THIS SHIT
 
-    det(manip->C, 2, &d);
+    d = DET(manip->C);
     if(d == 0){
         /* if C is not invertible, use the desired values as inputs */
         // TODO: Test and see if it works, otherwise use discrete integration
@@ -574,11 +587,11 @@ void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est){
         return;
     }
 
-    now = (double) HAL_GetTick(); /* time passed from when the process launch */
+    now = (double) HAL_GetTick()/1000; /* time passed from when the process launch */
     uint8_t i,j;
     for(i = 0; i < ESTIMATION_STEPS; i++){
         for(j = 0; j < ESTIMATION_STEPS; j++){
-            A[j+i*ESTIMATION_STEPS] = pow((double)(now - i*T_C), (double) ESTIMATION_STEPS-i-1);
+            A[j+i*ESTIMATION_STEPS] = pow((double)(now - i*T_C), (double) ESTIMATION_STEPS-j-1);
         }
     }
 
@@ -668,9 +681,25 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     the reduction of the motor is already taken care of in the ARR value: ARR=CPR*REDUCTION -> 4x1000xreduction
     4x is caused by the timer mode (TI1 and TI2)
     */
+    uint16_t counter; 
+    double displacement1, displacement2;
     double v_est, a_est; /* used to hold temporarily the estimations of speed and acceleration */
-    double displacement1 = (double) (2*M_PI*(htim1->Instance->CNT)/(htim1->Instance->ARR));
-    double displacement2 = (double) (2*M_PI) - (2*M_PI*(htim2->Instance->CNT)/(htim2->Instance->ARR)); /* the motor is upside down */
+    counter = (htim1->Instance->CNT);
+    if(counter >= htim1->Instance->ARR){
+        counter = (htim1->Instance->ARR-1) - (counter % 1<<16);
+    }
+
+    displacement1 = (double) (2*M_PI*counter/(htim1->Instance->ARR));
+    counter = (htim2->Instance->CNT);
+
+    if(counter >= htim2->Instance->ARR){
+        counter = (htim2->Instance->ARR-1) - (counter % 1<<16);
+    }
+    displacement2 = (double) (2*M_PI) - (2*M_PI*counter/(htim2->Instance->ARR)); /* the motor is upside down */
+
+    cnt = counter;
+    //global_var = displacement2;
+
     if(displacement1 > 2*M_PI){
     	displacement1 = 2*M_PI; /* clamping */
 	}
@@ -707,7 +736,7 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
 
 void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, double *u){
     /* T_C = steps*clock_period */
-    int8_t dir;
+    int8_t dir1, dir2;
     uint32_t steps, ARR, CCR;
     double clock_period;
 
@@ -719,11 +748,30 @@ void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, double *u){
     htim1->Instance->EGR = TIM_EGR_UG;
     */
     // rad2stepdir(u[0], RESOLUTION, (double) 1/T_C, &steps, &dir);
-    ARR = (uint32_t) HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ-1); // FIXME - change *2 with *PRESCALER
-    CCR = (uint32_t) (abs(u[1])/MAX_SPEED)*(ARR - 1);
+
+    dir1 = u[0] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    // dir1 = 1; // DEBUG
+    HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
+
+    dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    // dir2 = 1; // DEBUG
+    HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
+
+    dir2_global = dir2;
+
+    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ-1)); // FIXME - change *2 with *PRESCALER
+    CCR = (uint32_t) ((abs(u[0])/MAX_SPEED)*(ARR - 1));
+    CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
     __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
     __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
     htim1->Instance->EGR = TIM_EGR_UG;
+
+    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ-1)); // FIXME - change *2 with *PRESCALER
+    CCR = (uint32_t) ((abs(u[1])/MAX_SPEED)*(ARR - 1));
+    CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
+    __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+    __HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+    htim2->Instance->EGR = TIM_EGR_UG;
     
 
 
@@ -779,8 +827,14 @@ void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleT
 }
 
 void log_data(UART_HandleTypeDef *huart, man_t *manip){
-    unsigned long long encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
+    unsigned long long int encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
     uint32_t timestamp;
+    uint8_t i;
+    // SECTION DEBUG
+    for(i = 0; i < sizeof tx_data; i++){
+        tx_data[i] = 0;
+    }
+    // !SECTION DEBUG
     double q;
     rblast(&manip->q0_actual, &q);
     memcpy(&encoding_q0, &q, sizeof q);
@@ -791,8 +845,8 @@ void log_data(UART_HandleTypeDef *huart, man_t *manip){
     rbpeek(&manip->q1, &q);
     memcpy(&encoding_q1_d, &q, sizeof q);
     timestamp = HAL_GetTick();
-    sprintf(&tx_data, "%x:%x:%x:%x:%x", timestamp, encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d); /*Timestamp:q0:q1*/
-    HAL_UART_Transmit_DMA(&huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for logging purposes */
+    sprintf(tx_data, "%X:%X:%X:%X:%X\n", (unsigned long long int) timestamp, encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d); /*Timestamp:q0:q1*/
+    HAL_UART_Transmit_DMA(huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for logging purposes */
 }
 
 

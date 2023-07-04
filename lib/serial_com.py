@@ -39,13 +39,13 @@ def write_serial(msg:str) -> bool:
     # print(f"Written {len(msg)} to serial")
     return True
 
-def read_serial() -> str:
+def read_serial() -> bytes:
     global ser
     if ser is None: return None
     line = 'NO MSG'
     ser.flush()
     line = ser.readline()
-    line = str(line) # wait until \n -> blocking call
+    # line = str(line) # wait until \n -> blocking call
     return line
 
 def serial_close():

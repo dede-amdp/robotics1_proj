@@ -137,6 +137,7 @@ def send_data(msg_type: str, **data):
                 # it does not matter if the update is done in another moment, it still refers to the time when the reference signal is applied
                 tsleep(settings['data_rate']) # regulate the speed at which data is sent
             print(F"TRJ SENT") # DEBUG
+            print(scm.read_serial().decode('utf-8')) # DEBUG
 
 def trace_trajectory(q:tuple[list,list]):
     q1 = q[0][:]

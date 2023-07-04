@@ -1,6 +1,6 @@
 ringbuffer.c:15:11:rbpush	2
 ringbuffer.c:41:11:rbpop	2
 ringbuffer.c:64:11:rbpeek	2
-ringbuffer.c:83:11:rblast	2
-ringbuffer.c:95:11:rbget	2
-ringbuffer.c:115:6:rbclear	2
+ringbuffer.c:84:11:rblast	2
+ringbuffer.c:97:11:rbget	2
+ringbuffer.c:117:6:rbclear	2

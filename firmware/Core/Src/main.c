@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include<stdint.h>
 #include "custom.h"
+
+uint8_t TAIL;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,6 +49,7 @@ TIM_HandleTypeDef htim5;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -80,9 +83,6 @@ int main(void)
   rate_t rate;
   double v[2];
   char *data = "\n";
-  // SECTION - DEBUG
-  uint32_t PIPPO, PLUTO;
-  // !SECTION - DEBUG
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
   /* USER CODE END 1 */
@@ -123,26 +123,27 @@ int main(void)
   start_timers(&htim3, &htim4, &htim2, &htim5);
   while (1)
   {
-	// SECTION - DEBUG
-	PIPPO = htim2.Instance->ARR;
-	PLUTO = (GPIOA->ODR>>15)&1;
-	// !SECTION - DEBUG
+	TAIL = manip.q1_actual.head;
     read_encoders(&htim3, &htim4, &manip);
     /* log data */
-    log_data(&huart2, &manip);
+    //log_data(&huart2, &manip);
     controller(&manip, v); /* apply the control law to find the input */
     /* apply the inputs to the motors */
-
-    // SECTION - DEBUG
-    HAL_UART_Transmit(&huart2, (uint8_t *) &v, 32, 10000);
-    HAL_UART_Transmit(&huart2, (uint8_t *) &data, 2, 10000);
-    // !SECTION - DEBUG
-
+    // SECTION DEBUG
+    global_var = v[1];
+    v[0] = 1.5;
+    v[1] = 1.5;
+    *((double *) tx_data) = v[0];
+    *((double *) tx_data+1) = v[1];
+    tx_data[16] = '\n';
+    HAL_UART_Transmit_DMA(&huart2, &tx_data, 17);
+    // !SECTION DEBUG
     apply_input(&htim2, &htim5, v);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    rate_sleep(&rate); /* wait with a fixed frequency */
+    // rate_sleep(&rate); /* wait with a fixed frequency */
+    HAL_Delay(T_C*1000);
   }
   /* stop timers */
   stop_timers(&htim3, &htim4, &htim2, &htim5);
@@ -437,6 +438,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
 }
 
