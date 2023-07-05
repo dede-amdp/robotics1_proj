@@ -2,5 +2,5 @@
 ../Core/Src/ringbuffer.c:41:11:rbpop	16	static
 ../Core/Src/ringbuffer.c:64:11:rbpeek	16	static
 ../Core/Src/ringbuffer.c:84:11:rblast	24	static
-../Core/Src/ringbuffer.c:97:11:rbget	32	static
-../Core/Src/ringbuffer.c:117:6:rbclear	24	static
+../Core/Src/ringbuffer.c:99:11:rbget	32	static
+../Core/Src/ringbuffer.c:120:6:rbclear	24	static

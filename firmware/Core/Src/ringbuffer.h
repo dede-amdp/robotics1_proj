@@ -6,7 +6,7 @@
 #define RBUF_SZ 10
 
 typedef uint8_t rberror_t; // to show errors
-typedef double rbelement_t; // element of the buffer
+typedef float rbelement_t; // element of the buffer
 
 /*
 #@
@@ -30,7 +30,7 @@ rberror_t rbpush(ringbuffer_t *buffer, rbelement_t data);
 rberror_t rbpop(ringbuffer_t *buffer, rbelement_t *data);
 rberror_t rbpeek(ringbuffer_t *buffer, rbelement_t *data);
 rberror_t rblast(ringbuffer_t *buffer, rbelement_t *data);
-rberror_t rbget(ringbuffer_t *buffer, uint8_t i, rbelement_t *element);
+rberror_t rbget(ringbuffer_t *buffer, int8_t i, rbelement_t *element);
 void rbclear(ringbuffer_t *buffer);
 
 #endif

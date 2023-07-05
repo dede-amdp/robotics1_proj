@@ -17,13 +17,13 @@ bytes:
 */
 #define DATA_SZ 128
 /* CONTROL TIME */
-#define T_C 0.01
+#define T_C 0.0001
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
 #define RESOLUTION 0.0314159
 /* MAX SPEED of rotation of the motors (in rads/s) */
 #define MAX_SPEED 1.63
 /* PWM frequency */
-#define PWM_FREQ 3000
+#define PWM_FREQ 1000
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 3
 /* Debounce delay macro */
@@ -81,8 +81,8 @@ typedef struct manipulator {
     ringbuffer_t ddq0_actual;
     ringbuffer_t ddq1_actual;
     ringbuffer_t penup_actual;
-    double B[4];
-    double C[4];
+    float B[4];
+    float C[4];
 } man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
 
 typedef struct rate {
@@ -98,8 +98,8 @@ extern uint32_t previous_trigger;
 extern uint8_t triggered;
 
 /* controller parameters */
-extern const double Kp[4];
-extern const double Kd[4];
+extern const float Kp[4];
+extern const float Kd[4];
 /* reduction values for motors */
 extern const uint8_t reduction1;
 extern const uint8_t reduction2;
@@ -107,29 +107,30 @@ extern const uint8_t reduction2;
 extern uint8_t dir2_global;
 extern float global_var;
 extern uint16_t cnt;
+extern ringbuffer_t timestamps;
 
 void init_man(man_t *manip);
-uint8_t dot(double *A, uint8_t nA, uint8_t mA, double* B, uint8_t nB, uint8_t mB, double* C);
-void sum(double *A, double *B, uint8_t n, double *C);
-void diff(double *A, double *B, uint8_t n, double *C);
-uint8_t inv2x2(double *M, double *invM); 
-void det(double *M, uint8_t n, double *d);
-void adj(double *M, double *subM, uint8_t n, double *adjM);
-void tr(double *M, uint8_t n, uint8_t m, double *trM);
-uint8_t inv(double *M, double *adjM, double *subM, double *trM,  uint8_t n, double *invM);
-void pseudo_inv(double *M, double *trM, double *tempM, double *adjM, double *subM, double *invM, double *dotM, uint8_t n, double *psinvM);
+uint8_t dot(float *A, uint8_t nA, uint8_t mA, float* B, uint8_t nB, uint8_t mB, float* C);
+void sum(float *A, float *B, uint8_t n, float *C);
+void diff(float *A, float *B, uint8_t n, float *C);
+uint8_t inv2x2(float *M, float *invM); 
+void det(float *M, uint8_t n, float *d);
+void adj(float *M, float *subM, uint8_t n, float *adjM);
+void tr(float *M, uint8_t n, uint8_t m, float *trM);
+uint8_t inv(float *M, float *adjM, float *subM, float *trM,  uint8_t n, float *invM);
+void pseudo_inv(float *M, float *trM, float *tempM, float *adjM, float *subM, float *invM, float *dotM, uint8_t n, float *psinvM);
 
 void B_calc(man_t *manip);
 void C_calc(man_t *manip);
-void controller(man_t *manip, double *u);
-void rad2stepdir(double dq, double resolution, double frequency, uint32_t *steps, int8_t *dir);
-void speed_estimation(ringbuffer_t *q_actual, double *v_est, double *a_est);
+void controller(man_t *manip, float *u);
+void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
+void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float *v_est, float *a_est);
 
 void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);
 
 void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip);
-void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, double *u);
+void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u);
 
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);

@@ -86,21 +86,24 @@ rberror_t rblast(ringbuffer_t *buffer, rbelement_t *data){
     	*data = buffer->buffer[buffer->head]; /* avoids having random values as output */
         return 0; // operation failed
     }
-    uint8_t index = buffer->tail-1;
+    // uint8_t index = (uint8_t) ((buffer->tail-1+RBUF_SZ)%RBUF_SZ);
+    int8_t index = buffer->tail-1;
     if(index < 0){
-        index += RBUF_SZ;
+    	index += RBUF_SZ;
     }
-    *data = buffer->buffer[index];
+    *data = buffer->buffer[(uint8_t) index];
     return 1;
 }
 
-rberror_t rbget(ringbuffer_t *buffer, uint8_t i, rbelement_t *element){
+
+rberror_t rbget(ringbuffer_t *buffer, int8_t i, rbelement_t *data){
     if(i < 0 || i >= buffer->length){
         /* out of bounds */
+    	*data =  buffer->buffer[buffer->head];
         return 0;
     }
-    uint8_t index = (buffer->head+i) % RBUF_SZ;
-    *element = buffer->buffer[index];
+    uint8_t index = (uint8_t) ((buffer->head+i) % RBUF_SZ);
+    *data = buffer->buffer[index];
     return 1;
 }
 

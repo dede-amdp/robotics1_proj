@@ -24,7 +24,7 @@
 #include<stdint.h>
 #include "custom.h"
 
-uint8_t TAIL;
+uint32_t count = 0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -81,7 +81,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   rate_t rate;
-  double v[2];
+  float v[2];
   char *data = "\n";
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
@@ -114,6 +114,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   init_man(&manip); /* initialize the manipulator struct */
   init_rate(&rate, (uint32_t) (T_C*1000)); /* initialize the rate struct */
+  rbclear(&timestamps);
   HAL_UART_Receive_DMA(&huart2, (uint8_t*) &rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
   /* USER CODE END 2 */
 
@@ -123,27 +124,28 @@ int main(void)
   start_timers(&htim3, &htim4, &htim2, &htim5);
   while (1)
   {
-	TAIL = manip.q1_actual.head;
     read_encoders(&htim3, &htim4, &manip);
     /* log data */
     //log_data(&huart2, &manip);
     controller(&manip, v); /* apply the control law to find the input */
     /* apply the inputs to the motors */
+
     // SECTION DEBUG
-    global_var = v[1];
-    // v[0] = 1.5;
-    // v[1] = 1.5;
-    *((double *) tx_data) = v[0];
-    *((double *) tx_data+1) = v[1];
-    tx_data[16] = '\n';
-    HAL_UART_Transmit_DMA(&huart2, &tx_data, 17);
+    v[0] = 0;
+    v[1] = 2;
+    // *((float *) tx_data) = v[0];
+    // *((float *) tx_data+1) = v[1];
+    // tx_data[16] = '\n';
+    // HAL_UART_Transmit_DMA(&huart2, &tx_data, 17);
     // !SECTION DEBUG
+
     apply_input(&htim2, &htim5, v);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // rate_sleep(&rate); /* wait with a fixed frequency */
-    HAL_Delay(T_C*1000);
+    rate_sleep(&rate); /* wait with a fixed frequency */
+    // HAL_Delay((uint32_t) (T_C*1000));
+    count++;
   }
   /* stop timers */
   stop_timers(&htim3, &htim4, &htim2, &htim5);
