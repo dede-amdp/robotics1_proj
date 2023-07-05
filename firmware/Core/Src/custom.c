@@ -17,8 +17,8 @@ uint32_t previous_trigger = 0;
 uint8_t triggered = 0;
 
 /* controller parameters */
-const double Kp[4] = {0.05,0,0,0.05};
-const double Kd[4] = {0.05,0,0,0.05};
+const double Kp[4] = {0.5,0,0,0.5};
+const double Kd[4] = {0.5,0,0,0.5};
 /* reduction values for motors */
 const uint8_t reduction1 = 10;
 const uint8_t reduction2 = 5;
@@ -411,13 +411,14 @@ void B_calc(man_t *manip){
     double q1,q2;
     rblast(&manip->q0_actual, &q1);
     rblast(&manip->q1_actual, &q2);
-    manip->B[0] = (double) (0.024938*cos(q1 + 2*q2) + 0.12469*cos(q1 + q2) + 0.26194*cos(q1) + 0.074812*cos(q2) + 0.16349);
-    manip->B[1] = (double) (0.012469*cos(q1 + 2*q2) + 0.09975*cos(q1 + q2) + 0.14962*cos(q1) + 0.049875*cos(q2) + 0.058307);
+    manip->B[0] = (double) (0.0041601*cos(q1 + 2*q2) + 0.025414*cos(q1 + q2) + 0.075401*cos(q1) + 0.01248*cos(q2) + 0.043486); // (0.024938*cos(q1 + 2*q2) + 0.12469*cos(q1 + q2) + 0.26194*cos(q1) + 0.074812*cos(q2) + 0.16349);
+    manip->B[1] = (double) (0.00208*cos(q1 + 2*q2) + 0.020636*cos(q1 + q2) + 0.036429*cos(q1) + 0.0083202*cos(q2) + 0.0096571); // (0.012469*cos(q1 + 2*q2) + 0.09975*cos(q1 + q2) + 0.14962*cos(q1) + 0.049875*cos(q2) + 0.058307);
     manip->B[2] = manip->B[1]; // the matrix is symmetrical
-    manip->B[3] = (double) (0.074812*cos(q1 + q2) + 0.14962*cos(q1) + 0.024938*cos(q2) + 0.058309);
+    manip->B[3] = (double) (0.015857*cos(q1 + q2) + 0.036429*cos(q1) + 0.0041601*cos(q2) + 0.0096592); // (0.074812*cos(q1 + q2) + 0.14962*cos(q1) + 0.024938*cos(q2) + 0.058309);
     /*  manip::B is actually a vector, but it can be seen as follows: 
         [B[0], B[1]]
         [B[2], B[3]] */
+        
 }
 
 
@@ -439,9 +440,9 @@ void C_calc(man_t *manip){
     rblast(&manip->q1_actual, &q2);
     rblast(&manip->dq0_actual, &dq1);
     rblast(&manip->dq1_actual, &dq2);
-    manip->C[0] = (double) ( - 0.5*dq2*(0.024938*sin(q1 + 2*q2) + 0.049875*sin(q1 + q2) + 0.049875*sin(q2)));
-    manip->C[1] = (double) ( - 0.012469*(dq1 + dq2)*(sin(q1 + 2*q2) + 2*sin(q1 + q2) + 2*sin(q2)));
-    manip->C[2] = (double) (dq1*(0.012469*sin(q1 + 2*q2) + 0.024938*sin(q1 + q2) + 0.024938*sin(q2)));
+    manip->C[0] = (double) ( - 0.5*dq2*(0.0041601*sin(q1 + 2*q2) + 0.009557*sin(q1 + q2) + 0.0083202*sin(q2))); // ( - 0.5*dq2*(0.024938*sin(q1 + 2*q2) + 0.049875*sin(q1 + q2) + 0.049875*sin(q2)));
+    manip->C[1] = (double) ( - 0.000056218*(dq1 + dq2)*(37.0*sin(q1 + 2*q2) + 85.0*sin(q1 + q2) + 74.0*sin(q2))); // ( - 0.012469*(dq1 + dq2)*(sin(q1 + 2*q2) + 2*sin(q1 + q2) + 2*sin(q2)));
+    manip->C[2] = (double) (dq1*(0.00208*sin(q1 + 2.0*q2) + 0.0047785*sin(q1 + q2) + 0.0041601*sin(q2))); // (dq1*(0.012469*sin(q1 + 2*q2) + 0.024938*sin(q1 + q2) + 0.024938*sin(q2)));
     manip->C[3] = (double) 0.0;
     /*  manip::C is actually a vector, but it can be seen as follows: 
         [C[0], C[1]]

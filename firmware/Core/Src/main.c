@@ -131,8 +131,8 @@ int main(void)
     /* apply the inputs to the motors */
     // SECTION DEBUG
     global_var = v[1];
-    v[0] = 1.5;
-    v[1] = 1.5;
+    // v[0] = 1.5;
+    // v[1] = 1.5;
     *((double *) tx_data) = v[0];
     *((double *) tx_data+1) = v[1];
     tx_data[16] = '\n';
