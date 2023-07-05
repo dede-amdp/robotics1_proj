@@ -686,14 +686,16 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     double v_est, a_est; /* used to hold temporarily the estimations of speed and acceleration */
     counter = (htim1->Instance->CNT);
     if(counter >= htim1->Instance->ARR){
-        counter = (htim1->Instance->ARR-1) - (counter % 1<<16);
+        counter = (htim1->Instance->ARR-1) - (counter % 1<<16); /* handle underflow */
+        htim1->Instance->CNT = counter; /* correct cnt value */
     }
 
     displacement1 = (double) (2*M_PI*counter/(htim1->Instance->ARR));
     counter = (htim2->Instance->CNT);
 
     if(counter >= htim2->Instance->ARR){
-        counter = (htim2->Instance->ARR-1) - (counter % 1<<16);
+        counter = (htim2->Instance->ARR-1) - (counter % 1<<16); /* handle underflow */
+        htim2->Instance->CNT = counter;  /* correct cnt value */
     }
     displacement2 = (double) (2*M_PI) - (2*M_PI*counter/(htim2->Instance->ARR)); /* the motor is upside down */
 
