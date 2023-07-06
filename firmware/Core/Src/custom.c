@@ -22,10 +22,12 @@ const float Kd[4] = {0.5,0,0,0.5};
 /* reduction values for motors */
 const uint8_t reduction1 = 10;
 const uint8_t reduction2 = 5;
-ringbuffer_t timestamps;
 
+ringbuffer_t timestamps;
 float disp1, disp2;
-float dq_actual0, dq_actual1, ddq_actual0, ddq_actual1;
+float dq_actual0, dq_actual1;
+float ddq_actual0, ddq_actual1;
+uint32_t count = 0;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
@@ -73,17 +75,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     }
 }
 
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if(htim->Instance == TIM10){
+		/* check if it is the proper instance */
+		read_encoders(&manip);
+		count++;
+	}
+}
+
 /*
 #@
 @name: init_man
 @brief: initializes the members of the man_t struct
 @inputs: 
 - man_t *manip: man_t obj. to initialize;
+- TIM_HandleTypeDef *htim1: pointer to the timer used to decode the output of the first encoder;
+- TIM_HandleTypeDef *htim2: pointer to the timer used to decode the output of the second encode;
 @outputs: 
 - void;
 @#
 */
-void init_man(man_t *manip){
+void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2){
     uint8_t i;
     // initialize all the ring buffers
     for(i = 0; i < 14; i++){
@@ -94,6 +107,8 @@ void init_man(man_t *manip){
         manip->B[i] = (float) 0;
         manip->C[i] = (float) 0;
     }
+    manip->htim_encoder1 = htim1;
+    manip->htim_encoder2 = htim2;
 }
 
 /*
@@ -261,7 +276,7 @@ void det(float *M, uint8_t n, float *d){
             }
         }
         /* row subtraction */
-        for(i = k+1; i < n; i++){float
+        for(i = k+1; i < n; i++){
             factor = (float) (M[i*n+k]/M[k*n+k]);
             for(j = k; j < n; j++){
                 M[i*n+j] -= M[k*n+j]*factor;
@@ -503,15 +518,16 @@ void controller(man_t *manip, float *u){
 
     // SECTION DEBUG
 
-    disp1 = dq_actual[1];
-    disp2 = ddq_actual[1];
-	
+    // disp1 = dq_actual[1];// dq_actual[1];
+    // disp2 = ddq_actual[1];// ddq_actual[1];
+    /*
+	uint8_t window_width = 10;
     float s1, s2, s3, s4;
     s1 = 0;
     s2 = 0;
     s3 = 0;
     s4 = 0;
-    for(i=0; i < RBUF_SZ; i++){
+    for(i=0; i < window_width; i++){
         float a;
 		rbget(&manip->dq0_actual, i, &a);
         s1 += a;
@@ -522,16 +538,22 @@ void controller(man_t *manip, float *u){
 		rbget(&manip->ddq1_actual, i, &a);
 		s4 += a;
 	}
-    dq_actual0 = s1/5;
-    dq_actual1 = s2/5;
-    ddq_actual0 = s3/5;
-    ddq_actual1 = s4/5;
+	*/
+    dq_actual0 = dq_actual[0];
+    dq_actual1 = dq_actual[1];
+    ddq_actual0 = ddq_actual[0];
+    ddq_actual1 = ddq_actual[1];
+    /*
+    // disp1 = ddq_actual[0];
+    // disp2 = s4/window_width;
+    disp2 = dq_actual[1];
 
 
 	dq_actual[0] = dq_actual0;
 	dq_actual[1] = dq_actual1;
 	ddq_actual[0] = ddq_actual0;
 	ddq_actual[1] = ddq_actual1;
+	*/
 	
     // !SECTION DEBUG
 
@@ -586,7 +608,7 @@ void controller(man_t *manip, float *u){
 - void;
 @#
 */
-void rad2stepdir(floatfloat dq, floatfloat resolution, floatfloat frequency, uint32_t *steps, int8_t *dir){
+void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir){
     /* 
     Given the velocity dq (discretized as delta_q/delta_t), it can be rewritten in terms of resolution and number of steps:
     dq = delta_q/delta_t = delta_q*f -> stepdir*Resolution*f
@@ -611,87 +633,51 @@ void rad2stepdir(floatfloat dq, floatfloat resolution, floatfloat frequency, uin
 - void;
 @#
 */
-void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float *v_est, float *a_est){
+void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float reduction, float *v_est, float *a_est){
     float now, esp;
     float A[ESTIMATION_STEPS*ESTIMATION_STEPS], X[ESTIMATION_STEPS], P[ESTIMATION_STEPS], invA[ESTIMATION_STEPS*ESTIMATION_STEPS];
     /* temp matrices */
     float trM[ESTIMATION_STEPS*ESTIMATION_STEPS], tempM[ESTIMATION_STEPS*ESTIMATION_STEPS];
     float adjM[ESTIMATION_STEPS*ESTIMATION_STEPS], subM[(ESTIMATION_STEPS-1)*(ESTIMATION_STEPS-1)];
     float invM[ESTIMATION_STEPS*ESTIMATION_STEPS], dotM[ESTIMATION_STEPS*ESTIMATION_STEPS];
+    uint8_t i;
 
-
-    if(q_actual->length < 10){
-        // rblast(q_actual,&X[0]); /* get newest value */
-        float a[4];
-        rbget(q_actual, 0, &a[0]);
-        rbget(q_actual, 1, &a[1]);
-        rbget(dq_actual, 0, &a[2]);
-        rbget(dq_actual, 1, &a[3]);
-        uint8_t index1 = (q_actual->head) + (q_actual->length) - 1;
-        uint8_t index2 = (dq_actual->head) + (dq_actual->length) - 1;
-        a[0] = q_actual->buffer[index1%RBUF_SZ];
-        a[1] = q_actual->buffer[(index1-1)%RBUF_SZ];
-        a[2] = dq_actual->buffer[index2%RBUF_SZ];
-        a[3] = dq_actual->buffer[(index2-1)%RBUF_SZ];
-        /* if not enough data is available, apply simple estimation */
-        *v_est = (a[1]-a[0])/T_C;
-        *a_est = (a[3]-a[2])/T_C;
-        return;
-    } else{
-    	// SECTION DEBUG
-    	// rblast(q_actual,&X[0]); // get newest value
-        float a[4];
-		rbget(q_actual, 0, &a[0]);
-		rbget(q_actual, 1, &a[1]);
-		rbget(dq_actual, 0, &a[2]);
-		rbget(dq_actual, 1, &a[3]);
-		uint8_t index1 = (q_actual->head) + (q_actual->length) - 1;
-		uint8_t index2 = (dq_actual->head) + (dq_actual->length) - 1;
-		a[0] = q_actual->buffer[index1%RBUF_SZ];
-		a[1] = q_actual->buffer[(index1-1)%RBUF_SZ];
-		a[2] = dq_actual->buffer[index2%RBUF_SZ];
-		a[3] = dq_actual->buffer[(index2-1)%RBUF_SZ];
-		// if not enough data is available, apply simple estimation
-		*v_est = (a[1]-a[0])/T_C;
-		*a_est = (a[3]-a[2])/T_C;
-		return;
-		// !SECTION DEBUG
-    }
-
-    now = (float) HAL_GetTick()/1000; /* time passed from when the process launch */
-    uint8_t i,j;
-    for(i = 0; i < ESTIMATION_STEPS; i++){
-        for(j = 0; j < ESTIMATION_STEPS; j++){
-            A[j+i*ESTIMATION_STEPS] = pow((float)(now - i*T_C), (float) ESTIMATION_STEPS-j-1);
-        }
-    }
-
-    for(i = 0; i < ESTIMATION_STEPS; i++){
-        rbget(q_actual, i, &X[ESTIMATION_STEPS-1-i]);
-    }
     /*
-        x(t) = sum(p_i*t^i)
-        v(t) = sum(i*p_i*t^(i-1))
-        a(t) = sum(i*(i-1)*p_i*t^(i-2))
-        ---
-        p_i -> P[i]
-        x_i=A_i*P -> X = [x_0; x_1; ...; x_n] = [A_0; A_1; ...; A_n]*P = A*P -> P = A^(-1)*X = (A^T*A)^(-1)*A^T*X
+    float a[4];
+	rbget(q_actual, 0, &a[0]);
+	rbget(q_actual, 1, &a[1]);
+	rbget(dq_actual, 0, &a[2]);
+	rbget(dq_actual, 1, &a[3]);
+	uint8_t index1 = (q_actual->head) + (q_actual->length) - 1;
+	uint8_t index2 = (dq_actual->head) + (dq_actual->length) - 1;
+	a[0] = q_actual->buffer[index1%RBUF_SZ];
+	a[1] = q_actual->buffer[(index1-1+RBUF_SZ)%RBUF_SZ];
+	a[2] = dq_actual->buffer[index2%RBUF_SZ];
+	a[3] = dq_actual->buffer[(index2-1+RBUF_SZ)%RBUF_SZ];
+	// if not enough data is available, apply simple estimation
+	*v_est = ((a[1]-a[0])/T_S);
+	*a_est = (a[3]-a[2])/T_S;
+    return;
     */
 
-    pseudo_inv(A, trM, tempM, adjM, subM, invM, dotM, ESTIMATION_STEPS, invA);
-    dot(invA, ESTIMATION_STEPS, ESTIMATION_STEPS, X, ESTIMATION_STEPS, 1, P);
-    *v_est = 0;
-    *a_est = 0;
-    for(i = 0; i < ESTIMATION_STEPS; i++){
-        esp = (ESTIMATION_STEPS-i-1);
-        /* the derivation of constant values is 0 -> exclude the derivative of the constant values from the computation otherwise it would be now^i with i < 0 */
-        if(esp-1 >= 0){
-            *v_est += esp*pow(now, esp-1)*P[i];
-        }
-        if(esp-2 >= 0){ 
-            *a_est += esp*(esp-1)*pow(now, esp-2)*P[i];
-        }
+    float prev, succ, a;
+    prev = 0;
+    succ = 0;
+    for(i = 0; i < 5; i++){
+    	rbget(q_actual, i, &a);
+    	succ+=a;
     }
+    for(i = 0; i < 5; i++){
+    	rbget(q_actual, 5+i, &a);
+    	prev+=a;
+    }
+    prev /=5;
+    succ /=5;
+    *v_est = (succ-prev)/(T_C*5);
+
+    rbget(dq_actual, RBUF_SZ-1, &succ);
+    rbget(dq_actual, RBUF_SZ-2, &prev);
+    *a_est = (succ-prev)/T_C;
 }
 
 /*
@@ -742,13 +728,11 @@ void rate_sleep(rate_t *rate){
 taking into account the reduction ratio of each motor by means of the ARR registers of the timers (ARR=CPR*REDUCTION). 
 The method also estimates the speed and accelerations by using the timestamp method.
 @inputs: 
-- TIM_HandleTypeDef *htim1: pointer to the timer struct that decodes the first encoder;
-- TIM_HandleTypeDef *htim2: pointer to the timer struct that decodes the second encoder;
 - man_t *manip: pointer to the manipulator struct that holds both the desired and actual motor positions, speeds and accelerations;
 @outputs: outputs
 @#
 */
-void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip){
+void read_encoders(man_t *manip){
     /*
     CNT/ARR returns a value between 0 and 1: by multiplying it by 2*pi the resulting value shows the position of the motor
     the reduction of the motor is already taken care of in the ARR value: ARR=CPR*REDUCTION -> 4x1000xreduction
@@ -756,7 +740,13 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     */
     uint16_t counter; 
     float displacement1, displacement2;
-    float v_est, a_est; /* used to hold temporarily the estimations of speed and acceleration */
+    // float v_est, a_est; /* used to hold temporarily the estimations of speed and acceleration */
+    TIM_HandleTypeDef *htim1, *htim2;
+
+    htim1 = manip->htim_encoder1; /* pointer to the timer struct that decodes the first encoder output */
+    htim2 = manip->htim_encoder2; /* pointer to the timer struct that decodes the first encoder output */
+
+    /* first encoder */
     counter = (htim1->Instance->CNT);
     if(counter >= htim1->Instance->ARR){
         counter = (htim1->Instance->ARR-1) - (counter % 1<<16); /* handle underflow */
@@ -764,8 +754,9 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     }
 
     displacement1 = (float) (2*M_PI*counter/(htim1->Instance->ARR));
-    counter = (htim2->Instance->CNT);
 
+    /* second encoder */
+    counter = (htim2->Instance->CNT);
     if(counter >= htim2->Instance->ARR){
         counter = (htim2->Instance->ARR-1) - (counter % 1<<16); /* handle underflow */
         htim2->Instance->CNT = counter;  /* correct cnt value */
@@ -802,6 +793,9 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     uint8_t dir2 = (uint8_t) (htim2->Instance->CR1 >> 4) & 1;
     */
     // SECTION DEBUG
+    rbpush(&manip->q0_actual, displacement1);
+    rbpush(&manip->q1_actual, displacement2);
+    /*
     float last_displacement;
     rblast(&manip->q0_actual, &last_displacement);
     if(last_displacement-displacement1 != 0){
@@ -812,6 +806,7 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
 		rbpush(&manip->q1_actual, displacement2);
 	}
     // !SECTION DEBUG
+    */
     /*
     rbpush(&manip->q0_actual, displacement1);
     rbpush(&manip->q1_actual, displacement2);
@@ -819,7 +814,7 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     /* TODO: do logging of data */
 
     /* speed and acceleration estimations for both motors*/
-
+	/*
     speed_estimation(&manip->q0_actual, &manip->dq0_actual, &v_est, &a_est);
     rbpush(&manip->dq0_actual, v_est);
     rbpush(&manip->ddq0_actual, a_est);
@@ -827,8 +822,10 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
     speed_estimation(&manip->q1_actual, &manip->dq1_actual, &v_est, &a_est);
     rbpush(&manip->dq1_actual, v_est);
     rbpush(&manip->ddq1_actual, a_est);
+    */
 
     // SECTION DEBUG
+	/*
 	return;
     float delta_t, delta_q, delta_dq, t1, t2, q1, q2, dq1, dq2;
     rbget(&timestamps, timestamps.length-1, &t2);
@@ -858,13 +855,29 @@ void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *ma
 	rbpush(&manip->dq1_actual, v_est);
 	rbpush(&manip->ddq1_actual, a_est);
     // !SECTION DEBUG
+	*/
+}
 
+void update_speeds(man_t *manip){
+	float v_est, a_est;
+	speed_estimation(&manip->q0_actual, &manip->dq0_actual, reduction1, &v_est, &a_est);
+	//disp1 = v_est;
+	rbpush(&manip->dq0_actual, v_est);
+	rbpush(&manip->ddq0_actual, a_est);
+
+	speed_estimation(&manip->q1_actual, &manip->dq1_actual, reduction2, &v_est, &a_est);
+	//disp2 = v_est;
+	rbpush(&manip->dq1_actual, v_est);
+	rbpush(&manip->ddq1_actual, a_est);
 }
 
 void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
     /* T_C = steps*clock_period */
     int8_t dir1, dir2;
+    uint32_t f;
+    int32_t stepdir;
     uint32_t steps, ARR, CCR;
+    uint32_t prescaler1, prescaler2;
     float clock_period;
 
     /*
@@ -876,24 +889,52 @@ void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
     */
     // rad2stepdir(u[0], RESOLUTION, (float) 1/T_C, &steps, &dir);
 
-    dir1 = u[0] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    dir1 = u[0] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
     // dir1 = 1; // DEBUG
     HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
 
-    dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    dir2 = u[1] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
     // dir2 = 1; // DEBUG
     HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
 
-    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ-1)); // FIXME - change *2 with *PRESCALER
-    CCR = (uint32_t) ((abs(u[0])/MAX_SPEED)*(ARR - 1));
-    CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
+    /* actuation of the first motor */
+    //prescaler1 = htim1->Instance->PSC;
+
+    //ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ_1-1));
+    //ARR *= 16;
+    //ARR /= reduction1;
+    //CCR = (uint32_t) ((ABS(u[0])/MAX_SPEED)*(ARR - 1));
+    //CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
+    // rad2stepdir(u[0], (float) RESOLUTION, (float) (1/T_S), &steps, &dir1);
+    stepdir = (int32_t) (16*reduction1*(u[0]/RESOLUTION)); // 16 -> microstepping
+    f = HAL_RCC_GetPCLK1Freq()*2;
+    // dir1 = -SIGN(stepdir);
+    steps = (uint32_t) ABS(stepdir);
+    ARR = steps == 0 ? 0 : (f/(steps))-1;
+    CCR = steps == 0 ? 0 : (ARR-1)/2;
     __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
     __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
     htim1->Instance->EGR = TIM_EGR_UG;
 
-    ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ-1)); // FIXME - change *2 with *PRESCALER
-    CCR = (uint32_t) ((abs(u[1])/MAX_SPEED)*(ARR - 1));
-    CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
+
+    /* actuation of the second motor */
+    //prescaler2 = htim2->Instance->PSC;
+    // ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ_2-1));
+    //ARR *= 16;
+    //ARR /= reduction2;
+    //CCR = (uint32_t) ((ABS(u[1])/MAX_SPEED)*(ARR - 1));
+    //CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
+
+    if(u[1] > 0){
+    	double a;
+    	a = 0;
+    }
+
+    stepdir = (int32_t) (16*reduction2*(u[1]/RESOLUTION)); // 16 -> microstepping
+    f = HAL_RCC_GetPCLK1Freq()*2;
+	steps = (uint32_t) ABS(stepdir);
+	ARR = steps == 0 ? 0 : (f/(steps))-1;
+	CCR = steps == 0 ? 0 : (ARR-1)/2;
     __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
     __HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
     htim2->Instance->EGR = TIM_EGR_UG;
@@ -974,6 +1015,16 @@ void log_data(UART_HandleTypeDef *huart, man_t *manip){
     HAL_UART_Transmit_DMA(huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for logging purposes */
 }
 
+
+void setup_encoders(TIM_HandleTypeDef *htim){
+	const uint32_t clock_freq = 84000000;
+	uint16_t ARR;
+	ARR = (T_S*clock_freq)/PRESCALER_ENCODER;
+	__HAL_TIM_SET_PRESCALER(htim, PRESCALER_ENCODER);
+	__HAL_TIM_SET_AUTORELOAD(htim, ARR);
+	htim->Instance->EGR = TIM_EGR_UG;
+	HAL_TIM_Base_Start_IT(htim); /* start the sampling timer */
+}
 
 
 

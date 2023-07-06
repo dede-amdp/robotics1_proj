@@ -23,8 +23,6 @@
 /* USER CODE BEGIN Includes */
 #include<stdint.h>
 #include "custom.h"
-
-uint32_t count = 0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,6 +44,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim10;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
@@ -64,6 +63,7 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -81,8 +81,10 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   rate_t rate;
-  float v[2];
+  float v[2], v_est, a_est;
   char *data = "\n";
+  float i = 0.1*T_C;
+  float pos;
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
   /* USER CODE END 1 */
@@ -111,8 +113,9 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM2_Init();
   MX_TIM5_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
-  init_man(&manip); /* initialize the manipulator struct */
+  init_man(&manip, &htim3, &htim4); /* initialize the manipulator struct */
   init_rate(&rate, (uint32_t) (T_C*1000)); /* initialize the rate struct */
   rbclear(&timestamps);
   HAL_UART_Receive_DMA(&huart2, (uint8_t*) &rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
@@ -122,17 +125,34 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   /* start timers */
   start_timers(&htim3, &htim4, &htim2, &htim5);
+  setup_encoders(&htim10);
   while (1)
   {
-    read_encoders(&htim3, &htim4, &manip);
+    // read_encoders(&htim3, &htim4, &manip);
+    update_speeds(&manip);
     /* log data */
     //log_data(&huart2, &manip);
-    controller(&manip, v); /* apply the control law to find the input */
+    controller(&manip, NULL); /* apply the control law to find the input */
     /* apply the inputs to the motors */
 
+    // v[0] = 0; // 0.8*sin(HAL_GetTick()/1000);
+    v[1] += i;
+    if(ABS(v[1]) > 0.1){
+    	v[1] = SIGN(v[1])*0.1;
+    }
+    rblast(&manip.q1_actual, &pos);
+    if((pos > 0.01 && i > 0)||(pos < 0.01 && i < 0)){
+    	i *= -1;
+    }
+
+
+
+
+    disp1 = v[1];
+    //disp2 = v[1];
     // SECTION DEBUG
-    v[0] = 0;
-    v[1] = 2;
+    // v[0] = 0;
+    // v[1] = 2;
     // *((float *) tx_data) = v[0];
     // *((float *) tx_data+1) = v[1];
     // tx_data[16] = '\n';
@@ -143,12 +163,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    rate_sleep(&rate); /* wait with a fixed frequency */
-    // HAL_Delay((uint32_t) (T_C*1000));
-    count++;
+    //rate_sleep(&rate); /* wait with a fixed frequency */
+    HAL_Delay((uint32_t) (T_C*1000));
   }
   /* stop timers */
   stop_timers(&htim3, &htim4, &htim2, &htim5);
+  HAL_TIM_Base_Stop_IT(&htim10); /* stop the sampling timer */
   /* USER CODE END 3 */
 }
 
@@ -391,6 +411,37 @@ static void MX_TIM5_Init(void)
 
   /* USER CODE END TIM5_Init 2 */
   HAL_TIM_MspPostInit(&htim5);
+
+}
+
+/**
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
+
+  /* USER CODE BEGIN TIM10_Init 0 */
+
+  /* USER CODE END TIM10_Init 0 */
+
+  /* USER CODE BEGIN TIM10_Init 1 */
+
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 16;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 52500;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM10_Init 2 */
+
+  /* USER CODE END TIM10_Init 2 */
 
 }
 

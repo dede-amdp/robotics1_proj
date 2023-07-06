@@ -17,13 +17,19 @@ bytes:
 */
 #define DATA_SZ 128
 /* CONTROL TIME */
-#define T_C 0.0001
+#define T_C 0.01
+/* SAMPLING TIME (encoder readings) -> htim10: prescaler = 2, ARR = 28000 */
+#define T_S 0.002
+/* PRESCALER */
+#define PRESCALER_ENCODER 16
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
 #define RESOLUTION 0.0314159
 /* MAX SPEED of rotation of the motors (in rads/s) */
-#define MAX_SPEED 1.63
-/* PWM frequency */
-#define PWM_FREQ 1000
+#define MAX_SPEED 4
+/* PWM frequency first motor */
+#define PWM_FREQ_1 1800
+/* PWM frequency second motor */
+#define PWM_FREQ_2 2000
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 3
 /* Debounce delay macro */
@@ -38,6 +44,9 @@ bytes:
 
 /* SIGN macro */
 #define SIGN(A) (int8_t) ((A >= 0) - (A <= 0))
+
+/* ABS macro */
+#define ABS(A) (SIGN(A)*A)
 
 
 /*
@@ -60,8 +69,10 @@ bytes:
 - ringbuffer_t ddq0_actual: holds up to RBUF_SZ values of actual acceleration (estimation) of the first motor;
 - ringbuffer_t ddq1_actual: holds up to RBUF_SZ values of actual acceleration (estimation) of the second motor;
 - ringbuffer_t penup_actual: holds up to RBUF_SZ values of actual position of the end-effector motor;
-- double B[4]: array that represents a linearized (as in making a 2x2 become a 1x4) inertia matrix;
-- double C[4]: array that represents a linearized (as in making a 2x2 become a 1x4) coriolis matrix;
+- float B[4]: array that represents a linearized (as in making a 2x2 become a 1x4) inertia matrix;
+- float C[4]: array that represents a linearized (as in making a 2x2 become a 1x4) coriolis matrix;
+- TIM_HandleTypeDef *htim_encoder1: pointer to the timer used to read the first encoder;
+- TIM_HandleTypeDef *htim_encoder2: pointer to the timer used to read the second encoder;
 @#
 */
 typedef struct manipulator {
@@ -83,6 +94,8 @@ typedef struct manipulator {
     ringbuffer_t penup_actual;
     float B[4];
     float C[4];
+    TIM_HandleTypeDef *htim_encoder1;
+    TIM_HandleTypeDef *htim_encoder2;
 } man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
 
 typedef struct rate {
@@ -104,12 +117,15 @@ extern const float Kd[4];
 extern const uint8_t reduction1;
 extern const uint8_t reduction2;
 
-extern uint8_t dir2_global;
-extern float global_var;
-extern uint16_t cnt;
+// SECTION DEBUG
+extern float disp1, disp2;
+extern float dq_actual0, dq_actual1;
+extern float ddq_actual0, ddq_actual1;
 extern ringbuffer_t timestamps;
+extern uint32_t count;
+// !SECTION DEBUG
 
-void init_man(man_t *manip);
+void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2);
 uint8_t dot(float *A, uint8_t nA, uint8_t mA, float* B, uint8_t nB, uint8_t mB, float* C);
 void sum(float *A, float *B, uint8_t n, float *C);
 void diff(float *A, float *B, uint8_t n, float *C);
@@ -124,12 +140,13 @@ void B_calc(man_t *manip);
 void C_calc(man_t *manip);
 void controller(man_t *manip, float *u);
 void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
-void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float *v_est, float *a_est);
+void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float reduction, float *v_est, float *a_est);
 
 void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);
 
-void read_encoders(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, man_t *manip);
+void read_encoders(man_t *manip);
+void update_speeds(man_t *manip);
 void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u);
 
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);

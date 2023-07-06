@@ -1,4 +1,4 @@
-../Core/Src/ringbuffer.c:15:11:rbpush	24	static
+../Core/Src/ringbuffer.c:15:11:rbpush	16	static
 ../Core/Src/ringbuffer.c:41:11:rbpop	16	static
 ../Core/Src/ringbuffer.c:64:11:rbpeek	16	static
 ../Core/Src/ringbuffer.c:84:11:rblast	24	static
