@@ -83,7 +83,7 @@ int main(void)
   rate_t rate;
   float v[2], v_est, a_est;
   char *data = "\n";
-  float i = 0.1*T_C;
+  float i = 0.3*T_C;
   float pos;
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
@@ -126,6 +126,7 @@ int main(void)
   /* start timers */
   start_timers(&htim3, &htim4, &htim2, &htim5);
   setup_encoders(&htim10);
+
   while (1)
   {
     // read_encoders(&htim3, &htim4, &manip);
@@ -136,19 +137,20 @@ int main(void)
     /* apply the inputs to the motors */
 
     // v[0] = 0; // 0.8*sin(HAL_GetTick()/1000);
-    v[1] += i;
-    if(ABS(v[1]) > 0.1){
-    	v[1] = SIGN(v[1])*0.1;
+    if (limit_switch == -1){
+    	  v[0] = 0.3;
     }
-    rblast(&manip.q1_actual, &pos);
-    if((pos > 0.01 && i > 0)||(pos < 0.01 && i < 0)){
-    	i *= -1;
+    else {
+    	v[0]=0;
     }
 
 
 
 
-    disp1 = v[1];
+
+
+
+    disp1 = v[0];
     //disp2 = v[1];
     // SECTION DEBUG
     // v[0] = 0;

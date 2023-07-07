@@ -16,10 +16,10 @@ bytes:
 = 119 (bytes) -> use 128 bytes just in case longer messages are needed
 */
 #define DATA_SZ 128
-/* CONTROL TIME */
-#define T_C 0.01
+/* CONTROL TIME  The control time  must be 10 times smaller than the dominant time constant (0.022s)  */
+#define T_C 0.001
 /* SAMPLING TIME (encoder readings) -> htim10: prescaler = 2, ARR = 28000 */
-#define T_S 0.002
+#define T_S 0.0002
 /* PRESCALER */
 #define PRESCALER_ENCODER 16
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
@@ -47,6 +47,9 @@ bytes:
 
 /* ABS macro */
 #define ABS(A) (SIGN(A)*A)
+
+
+
 
 
 /*
@@ -123,6 +126,10 @@ extern float dq_actual0, dq_actual1;
 extern float ddq_actual0, ddq_actual1;
 extern ringbuffer_t timestamps;
 extern uint32_t count;
+
+
+extern int limit_switch;
+
 // !SECTION DEBUG
 
 void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2);

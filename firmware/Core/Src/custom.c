@@ -28,6 +28,7 @@ float disp1, disp2;
 float dq_actual0, dq_actual1;
 float ddq_actual0, ddq_actual1;
 uint32_t count = 0;
+int limit_switch = 1;
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
@@ -65,7 +66,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     now = HAL_GetTick();
     if((now - previous_trigger) > DEBOUNCE_DELAY){
         if(!triggered){
-            uint8_t limit_switch = 1;
+          limit_switch *= -1;
             // SECTION - DEBUG
             HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
             // !SECTION - DEBUG
@@ -660,9 +661,8 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float red
     return;
     */
 
-    float prev, succ, a;
-    prev = 0;
-    succ = 0;
+    /*
+
     for(i = 0; i < 5; i++){
     	rbget(q_actual, i, &a);
     	succ+=a;
@@ -673,11 +673,43 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float red
     }
     prev /=5;
     succ /=5;
-    *v_est = (succ-prev)/(T_C*5);
+    //*v_est = (succ-prev)/(T_C*5);
+    rbget(q_actual,RBUF_SZ-1, &succ);
+    rbget(q_actual,RBUF_SZ-2, &prev);
+	*v_est=(succ-prev)/T_S;
 
     rbget(dq_actual, RBUF_SZ-1, &succ);
     rbget(dq_actual, RBUF_SZ-2, &prev);
-    *a_est = (succ-prev)/T_C;
+    *a_est = (succ-prev)/T_S;*/
+
+    /* filtering velocity with a first order filter  */
+    float prev, succ, a;
+       prev = 0;
+       succ = 0;
+
+    float pos_prev, pos_succ, vel;
+
+    rbget(q_actual,RBUF_SZ-1, &pos_succ);
+    rbget(q_actual,RBUF_SZ-2, &pos_prev);
+    rblast(dq_actual,&vel);
+
+    *v_est=(pos_succ-pos_prev)*0.1+vel;
+
+
+    rbget(dq_actual, RBUF_SZ-1, &succ);
+	rbget(dq_actual, RBUF_SZ-2, &prev);
+	*a_est = (succ-prev)/T_S;
+
+
+
+
+
+
+
+
+
+
+
 }
 
 /*
