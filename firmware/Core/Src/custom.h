@@ -18,7 +18,7 @@ bytes:
 #define DATA_SZ 128
 /* CONTROL TIME  The control time  must be 10 times smaller than the dominant time constant (0.022s)  */
 #define T_C 0.001
-/* SAMPLING TIME (encoder readings) -> htim10: prescaler = 2, ARR = 28000 */
+/* SAMPLING TIME (encoder readings) -> htim10: prescaler = 2, ARR = 28000 T_S=0.0002 */
 #define T_S 0.0002
 /* PRESCALER */
 #define PRESCALER_ENCODER 16
@@ -147,7 +147,7 @@ void B_calc(man_t *manip);
 void C_calc(man_t *manip);
 void controller(man_t *manip, float *u);
 void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
-void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float reduction, float *v_est, float *a_est);
+void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual,ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est);
 
 void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);

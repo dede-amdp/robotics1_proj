@@ -81,7 +81,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM10){
 		/* check if it is the proper instance */
 		read_encoders(&manip);
-		count++;
+
 	}
 }
 
@@ -634,7 +634,7 @@ void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, i
 - void;
 @#
 */
-void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float reduction, float *v_est, float *a_est){
+void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est){
     float now, esp;
     float A[ESTIMATION_STEPS*ESTIMATION_STEPS], X[ESTIMATION_STEPS], P[ESTIMATION_STEPS], invA[ESTIMATION_STEPS*ESTIMATION_STEPS];
     /* temp matrices */
@@ -661,18 +661,20 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float red
     return;
     */
 
-    /*
-
+    float prev, succ, vel,acc, a, b;
+    succ=0;
+    prev=0;
     for(i = 0; i < 5; i++){
     	rbget(q_actual, i, &a);
-    	succ+=a;
+    	prev+=a;
     }
     for(i = 0; i < 5; i++){
     	rbget(q_actual, 5+i, &a);
-    	prev+=a;
+    	succ+=a;
     }
     prev /=5;
     succ /=5;
+    /*
     //*v_est = (succ-prev)/(T_C*5);
     rbget(q_actual,RBUF_SZ-1, &succ);
     rbget(q_actual,RBUF_SZ-2, &prev);
@@ -680,23 +682,26 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float red
 
     rbget(dq_actual, RBUF_SZ-1, &succ);
     rbget(dq_actual, RBUF_SZ-2, &prev);
-    *a_est = (succ-prev)/T_S;*/
+    *a_est = (succ-prev)/T_S;
 
     /* filtering velocity with a first order filter  */
 
-    float pos_prev, pos_succ, vel, a, b;
 
-    a = T_C/(500*3.14159);
-    b = 1+a;
 
-    rbget(q_actual,RBUF_SZ-1, &pos_succ);
-    rbget(q_actual,RBUF_SZ-2, &pos_prev);
+
+    //rbget(q_actual,RBUF_SZ-1, &pos_succ);
+    //rbget(q_actual,RBUF_SZ-2, &pos_prev);
     rblast(dq_actual,&vel);
 
-    // *v_est=(pos_succ-pos_prev)*0.1+vel;
-    *v_est = (a*((pos_succ-pos_prev)/T_S)+vel)/b;
 
-	*a_est = (pos_succ-pos_prev)/T_S;
+    *v_est=0.8546*vel+((1-0.8546)*(succ-prev)/(T_C*5) );
+
+
+    rbget(dq_actual, RBUF_SZ-1, &succ);
+    rbget(dq_actual, RBUF_SZ-2, &prev);
+    //*a_est = (succ-prev)/T_C;
+    rblast(ddq_actual,&acc);
+    *a_est= 0.9245*acc+((1- 0.9245)*(succ-prev)/(T_C) );
 
 
 }
@@ -881,12 +886,12 @@ void read_encoders(man_t *manip){
 
 void update_speeds(man_t *manip){
 	float v_est, a_est;
-	speed_estimation(&manip->q0_actual, &manip->dq0_actual, reduction1, &v_est, &a_est);
+	speed_estimation(&manip->q0_actual, &manip->dq0_actual,&manip->ddq0_actual, reduction1, &v_est, &a_est);
 	//disp1 = v_est;
 	rbpush(&manip->dq0_actual, v_est);
 	rbpush(&manip->ddq0_actual, a_est);
 
-	speed_estimation(&manip->q1_actual, &manip->dq1_actual, reduction2, &v_est, &a_est);
+	speed_estimation(&manip->q1_actual, &manip->dq1_actual,&manip->ddq1_actual, reduction2, &v_est, &a_est);
 	//disp2 = v_est;
 	rbpush(&manip->dq1_actual, v_est);
 	rbpush(&manip->ddq1_actual, a_est);

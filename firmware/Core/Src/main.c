@@ -83,7 +83,7 @@ int main(void)
   rate_t rate;
   float v[2], v_est, a_est;
   char *data = "\n";
-  float i = 0.3*T_C;
+  float i = 1*T_C;
   float pos;
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
@@ -138,7 +138,7 @@ int main(void)
 
     // v[0] = 0; // 0.8*sin(HAL_GetTick()/1000);
     if (limit_switch == -1){
-    	  v[0] = 0.3;
+    	  v[0] = 0.3*sin(HAL_GetTick()/1000);
     }
     else {
     	v[0]=0;
@@ -167,6 +167,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
     //rate_sleep(&rate); /* wait with a fixed frequency */
     HAL_Delay((uint32_t) (T_C*1000));
+    count++;
   }
   /* stop timers */
   stop_timers(&htim3, &htim4, &htim2, &htim5);
