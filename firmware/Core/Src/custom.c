@@ -683,31 +683,20 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, float red
     *a_est = (succ-prev)/T_S;*/
 
     /* filtering velocity with a first order filter  */
-    float prev, succ, a;
-       prev = 0;
-       succ = 0;
 
-    float pos_prev, pos_succ, vel;
+    float pos_prev, pos_succ, vel, a, b;
+
+    a = T_C/(500*3.14159);
+    b = 1+a;
 
     rbget(q_actual,RBUF_SZ-1, &pos_succ);
     rbget(q_actual,RBUF_SZ-2, &pos_prev);
     rblast(dq_actual,&vel);
 
-    *v_est=(pos_succ-pos_prev)*0.1+vel;
+    // *v_est=(pos_succ-pos_prev)*0.1+vel;
+    *v_est = (a*((pos_succ-pos_prev)/T_S)+vel)/b;
 
-
-    rbget(dq_actual, RBUF_SZ-1, &succ);
-	rbget(dq_actual, RBUF_SZ-2, &prev);
-	*a_est = (succ-prev)/T_S;
-
-
-
-
-
-
-
-
-
+	*a_est = (pos_succ-pos_prev)/T_S;
 
 
 }
