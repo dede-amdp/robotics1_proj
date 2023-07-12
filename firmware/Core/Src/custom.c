@@ -29,6 +29,7 @@ float dq_actual0, dq_actual1;
 float ddq_actual0, ddq_actual1;
 uint32_t count = 0;
 int limit_switch = 1;
+float ei[2]= {0.0 , 0.0};
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
@@ -558,6 +559,24 @@ void controller(man_t *manip, float *u){
 	
     // !SECTION DEBUG
 
+
+
+    diff(dq, dq_actual, 2, ep); /* POSITION ERROR q - q_d */
+    sum(dq, dq_actual, 2, ed); /*VELOCITY ERROR dq - dq_d */
+
+    //ei[0]+=ed[0]*T_C;
+    ei[0]+=(ed[0]*T_C/2);
+    ei[1]+=(ed[1]*T_C/2);
+
+    //*(u)=0.3*(ed[0])+0.1*(ei[0])+ep[0];
+    // *(u+1)=-(0.3*(ed[1])+0.1*(ei[1])+ep[1]);
+
+   // *(u)=0.3*(ed[0])+0.1*(ei[0]);
+    *(u)=80*(ep[0])+10*(ei[0]);
+    *(u+1)=-(200*(ep[1])+30*(ei[1]));
+
+
+    return;
     diff(q, q_actual, 2, ep); /* q - q_d */
     diff(dq, dq_actual, 2, ed); /* dq - dq_d */
 
@@ -932,7 +951,7 @@ void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
     //CCR = (uint32_t) ((ABS(u[0])/MAX_SPEED)*(ARR - 1));
     //CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
     // rad2stepdir(u[0], (float) RESOLUTION, (float) (1/T_S), &steps, &dir1);
-    stepdir = (int32_t) (16*reduction1*(u[0]/RESOLUTION)); // 16 -> microstepping
+    stepdir = (int32_t) (16*reduction1*((u[0]*T_C)/RESOLUTION)); // 16 -> microstepping
     f = HAL_RCC_GetPCLK1Freq()*2;
     // dir1 = -SIGN(stepdir);
     steps = (uint32_t) ABS(stepdir);
@@ -951,12 +970,12 @@ void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
     //CCR = (uint32_t) ((ABS(u[1])/MAX_SPEED)*(ARR - 1));
     //CCR %= (ARR-1); /* saturate the motor, avoid too high speeds */
 
-    if(u[1] > 0){
-    	double a;
-    	a = 0;
-    }
+	   // if(u[1] > 0){
+	   //	double a;
+	   //   a = 0;
+	   // }
 
-    stepdir = (int32_t) (16*reduction2*(u[1]/RESOLUTION)); // 16 -> microstepping
+    stepdir = (int32_t) (16*reduction2*((u[1]*T_C)/RESOLUTION)); // 16 -> microstepping
     f = HAL_RCC_GetPCLK1Freq()*2;
 	steps = (uint32_t) ABS(stepdir);
 	ARR = steps == 0 ? 0 : (f/(steps))-1;

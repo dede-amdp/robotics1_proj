@@ -16,8 +16,8 @@ from lib import serial_com as scm # serial communication library
 import traceback
 
 settings = {
-    'Tc' : 0.01, # s
-    'data_rate': 1/100, # rate at which msgs are sent
+    'Tc' : 0.001, # s
+    'data_rate': 1/1000, # rate at which msgs are sent
     'max_acc' : 1.05, #1.05, # rad/s**2
     'ser_started': False,
     'line_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t), # timing laws for line and circle segments

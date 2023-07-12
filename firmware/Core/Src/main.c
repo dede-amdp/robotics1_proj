@@ -133,16 +133,17 @@ int main(void)
     update_speeds(&manip);
     /* log data */
     //log_data(&huart2, &manip);
-    controller(&manip, NULL); /* apply the control law to find the input */
+    controller(&manip, v); /* apply the control law to find the input */
     /* apply the inputs to the motors */
 
     // v[0] = 0; // 0.8*sin(HAL_GetTick()/1000);
+    /*
     if (limit_switch == -1){
     	  v[0] = 0.3*sin(HAL_GetTick()/1000);
     }
     else {
     	v[0]=0;
-    }
+    }*/
 
 
 
@@ -151,7 +152,7 @@ int main(void)
 
 
     disp1 = v[0];
-    //disp2 = v[1];
+    disp2 = v[1];
     // SECTION DEBUG
     // v[0] = 0;
     // v[1] = 2;

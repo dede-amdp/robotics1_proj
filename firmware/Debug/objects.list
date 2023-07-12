@@ -1,5 +1,6 @@
 "./Core/Src/custom.o"
 "./Core/Src/main.o"
+"./Core/Src/pid_controller.o"
 "./Core/Src/ringbuffer.o"
 "./Core/Src/stm32f4xx_hal_msp.o"
 "./Core/Src/stm32f4xx_it.o"

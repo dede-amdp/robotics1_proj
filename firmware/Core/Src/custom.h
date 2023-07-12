@@ -5,6 +5,9 @@
 #ifndef CUSTOM_DEF
 #define CUSTOM_DEF
 /*
+RESURCES:
+https://www.pololu.com/product/2133/resources
+
 TRJ:q0:dq0:ddq0:q1:dq1:ddq1:penup
 
 bytes:
@@ -14,12 +17,17 @@ bytes:
 +1 for the penup value which is 1 or 0
 
 = 119 (bytes) -> use 128 bytes just in case longer messages are needed
+
+
+
 */
 #define DATA_SZ 128
 /* CONTROL TIME  The control time  must be 10 times smaller than the dominant time constant (0.022s)  */
 #define T_C 0.001
 /* SAMPLING TIME (encoder readings) -> htim10: prescaler = 2, ARR = 28000 T_S=0.0002 */
 #define T_S 0.0002
+/* MOTOR TIME CONSTANT the period of the PWM must be at least double of tau=Lc/Rc => 4.4*10^-3/2.30=0.00191304347*/
+#define TAU 0.00191304347
 /* PRESCALER */
 #define PRESCALER_ENCODER 16
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
@@ -126,6 +134,7 @@ extern float dq_actual0, dq_actual1;
 extern float ddq_actual0, ddq_actual1;
 extern ringbuffer_t timestamps;
 extern uint32_t count;
+extern float ei[2];
 
 
 extern int limit_switch;
