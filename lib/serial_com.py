@@ -33,8 +33,8 @@ def write_serial(msg:str) -> bool:
     if ser is None: return False
     if len(msg) == 0:
         msg = "EMPTY\n";
-    if msg[-1] != "\n":
-        msg = msg + "\n"
+    #if msg[-1] != "\n":
+    #    msg = msg + "\n"
     ser.write(bytes(msg,'utf-8'))          # write a string
     # print(f"Written {len(msg)} to serial")
     return True

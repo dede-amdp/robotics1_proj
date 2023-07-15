@@ -16,9 +16,9 @@ from lib import serial_com as scm # serial communication library
 import traceback
 
 settings = {
-    'Tc' : 0.001, # s
-    'data_rate': 1/1000, # rate at which msgs are sent
-    'max_acc' : 1.05, #1.05, # rad/s**2
+    'Tc' : 0.01, # s
+    'data_rate': 1/100, # rate at which msgs are sent
+    'max_acc' : 0.05,#1.05, #1.05, # rad/s**2
     'ser_started': False,
     'line_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t), # timing laws for line and circle segments
     'circle_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t) # lambda t, tf: t/tf
@@ -92,7 +92,7 @@ def d2h(d: float): # double to hex
     # q = long (double)
     # d = double
     # check: https://docs.python.org/2/library/struct.html
-    return hex(unpack('<Q', pack('<d', d))[0])
+    return hex(unpack('<Q', pack('<d', d))[0]).ljust(18,"0")
 
 
 
@@ -120,6 +120,7 @@ def send_data(msg_type: str, **data):
                             f":{int(data['q'][2][i])}\n"
 
                 scm.write_serial(msg_str) # send data through the serial com
+                print(msg_str)
 
                 pos = tpy.dk([data['q'][0][i], data['q'][1][i]], sizes)
                 log(
@@ -136,7 +137,7 @@ def send_data(msg_type: str, **data):
                 # TODO: when reading the actual data from the manipulator, update the remaining data
                 # it does not matter if the update is done in another moment, it still refers to the time when the reference signal is applied
                 tsleep(settings['data_rate']) # regulate the speed at which data is sent
-            print(F"TRJ SENT") # DEBUG
+            print(f"TRJ SENT,{len(data['q'][0])}") # DEBUG
             # print(scm.read_serial().decode('utf-8')) # DEBUG
 
 def trace_trajectory(q:tuple[list,list]):

@@ -1,6 +1,7 @@
 #include<stdint.h> /* used for types like uint8_t and similar */
 #include "ringbuffer.h"
 #include "main.h"
+#include "pid_controller.h"
 
 #ifndef CUSTOM_DEF
 #define CUSTOM_DEF
@@ -21,11 +22,11 @@ bytes:
 
 
 */
-#define DATA_SZ 128
+#define DATA_SZ 120
 /* CONTROL TIME  The control time  must be 10 times smaller than the dominant time constant (0.022s)  */
-#define T_C 0.001
+#define T_C 0.01
 /* SAMPLING TIME (encoder readings) -> htim10: prescaler = 2, ARR = 28000 T_S=0.0002 */
-#define T_S 0.0002
+#define T_S 0.002
 /* MOTOR TIME CONSTANT the period of the PWM must be at least double of tau=Lc/Rc => 4.4*10^-3/2.30=0.00191304347*/
 #define TAU 0.00191304347
 /* PRESCALER */
@@ -37,7 +38,7 @@ bytes:
 /* PWM frequency first motor */
 #define PWM_FREQ_1 1800
 /* PWM frequency second motor */
-#define PWM_FREQ_2 2000
+#define PWM_FREQ_2 1000
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 3
 /* Debounce delay macro */
@@ -56,6 +57,18 @@ bytes:
 /* ABS macro */
 #define ABS(A) (SIGN(A)*A)
 
+/* CONTROLLER PARAMETER */
+#define KP1 3.8
+#define KP2 1.8
+
+#define TI1 0.005
+#define TI2 0.005
+
+#define TD1 0.005
+#define TD2 0.005
+
+#define N1 5
+#define N2 5
 
 
 
@@ -118,12 +131,17 @@ extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for receptio
 extern uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
 extern man_t manip;
 
+
+extern pid_controller_t pid1, pid2 ;
+
 extern uint32_t previous_trigger;
 extern uint8_t triggered;
 
 /* controller parameters */
 extern const float Kp[4];
 extern const float Kd[4];
+
+
 /* reduction values for motors */
 extern const uint8_t reduction1;
 extern const uint8_t reduction2;
@@ -134,7 +152,7 @@ extern float dq_actual0, dq_actual1;
 extern float ddq_actual0, ddq_actual1;
 extern ringbuffer_t timestamps;
 extern uint32_t count;
-extern float ei[2];
+extern float ui[2];
 
 
 extern int limit_switch;
@@ -155,8 +173,10 @@ void pseudo_inv(float *M, float *trM, float *tempM, float *adjM, float *subM, fl
 void B_calc(man_t *manip);
 void C_calc(man_t *manip);
 void controller(man_t *manip, float *u);
+void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u);
 void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
 void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual,ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est);
+
 
 void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);
@@ -164,7 +184,7 @@ void rate_sleep(rate_t *rate);
 void read_encoders(man_t *manip);
 void update_speeds(man_t *manip);
 void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u);
-
+void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u);
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 

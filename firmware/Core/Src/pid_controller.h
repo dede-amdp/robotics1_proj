@@ -10,6 +10,8 @@
 
 #include<stdint.h>
 
+
+
 typedef struct{
 
 		/* GAINS */
@@ -34,12 +36,12 @@ typedef struct{
 		/* OUTPUT */
 		float out;
 
-} pid_controller;
+} pid_controller_t;
 
-int PID_init(pid_controller *pid, float Kp, float Ti, float Td, float N);
-int set_limit(pid_controller *pid, float lim_out_min, float lim_out_max, float lim_integ_min,float lim_integ_max );
+int PID_init(pid_controller_t *pid, float Kp, float Ti, float Td, float N);
+int set_limit(pid_controller_t *pid, float lim_out_min, float lim_out_max, float lim_integ_min,float lim_integ_max );
 
-int PID_update(pid_controller *pid, float set_point , float meausre, float T_C);
+int PID_update(pid_controller_t *pid, float set_point , float measure, float T_C);
 
 
 #endif /* SRC_PID_CONTROLLER_H_ */

@@ -8,17 +8,22 @@
 #include<time.h>    /* used for fixing the while looping rate */
 #include "main.h"
 #include "ringbuffer.h"
+#include "pid_controller.h"
 
 uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
 uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
 man_t manip;
 
+pid_controller_t pid1, pid2;
+
 uint32_t previous_trigger = 0;
 uint8_t triggered = 0;
 
 /* controller parameters */
-const float Kp[4] = {0.5,0,0,0.5};
-const float Kd[4] = {0.5,0,0,0.5};
+const float Kp[4] = {0.8,0,0,0.8};
+const float Kd[4] = {2,0,0,2};
+
+
 /* reduction values for motors */
 const uint8_t reduction1 = 10;
 const uint8_t reduction2 = 5;
@@ -29,28 +34,54 @@ float dq_actual0, dq_actual1;
 float ddq_actual0, ddq_actual1;
 uint32_t count = 0;
 int limit_switch = 1;
-float ei[2]= {0.0 , 0.0};
+float ui[2]= {0.0 , 0.0};
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+
+	//__disable_irq();
+
+	char str[DATA_SZ];
+
     char *cmd, *data;
+
+    //printf(rx_data);
+   // printf("\n");
+    //fflush(stdout);
+
+
+
     double value;
     unsigned long long encoding;
     uint8_t i = 0;
     /* read the first characters */
-    cmd = strtok((char*) rx_data, ":");
-    if(strcmp(cmd, "TRJ")){ /* trj case*/
+
+    memcpy(str,rx_data,sizeof str);
+
+    char  *save_ptr;
+
+    cmd = strtok_r((char*) str, ":", &save_ptr);
+
+   // printf("%s %d \n",cmd,!strcmp(cmd, "TRJ"));
+    //fflush(stdout);
+
+    if(!strcmp(cmd, "TRJ")){
+    	   count++;
+
+    	/* trj case*/
         /* READ the data from the serial and populate the corresponding members of the man_t struct 
            these values will be used to set the reference value for the control loop */
-        data = strtok(NULL, ":");
+        //data = strtok(cmd+sizeof cmd, ":");
+	   data = strtok_r(cmd+sizeof cmd, ":",  &save_ptr);
         while(data != NULL){
             if(i == 6) break; /* reading penup */
             // value = "0x"; /* will contain the value extracted from the received string */
             encoding = strtoull(data, NULL, 16);
             memcpy(&value, &encoding, sizeof value);
+
             // value = strcat(value, data); /* string concatenation REF: https://www.programiz.com/c-programming/library-function/string.h/strcat */
             rbpush((((ringbuffer_t *) &manip)+i), (float) value); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
-            data = strtok(NULL, ":");
+            data = strtok_r(NULL, ":", &save_ptr);
             i++;
         }
         rbpush(&manip.penup, (float) atoi(data));
@@ -59,6 +90,27 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     }
     /* wait again for incoming data */
     HAL_UART_Receive_DMA(huart, rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
+
+    //HAL_UART_Receive_DMA(huart, rx_data, 121);
+
+
+
+	//printf(" count %d \n",count);
+
+
+
+    //__enable_irq();
+
+       return
+	   count++;
+
+
+				/* Debug*/
+
+		  //HAL_UART_Receive_DMA(huart, rx_data, 121);
+
+
+
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
@@ -85,6 +137,38 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 	}
 }
+
+
+#define DEMCR               *((volatile uint32_t*) 0xE000EDFCU)
+#define ITM_STIMULUS_PORT0  *((volatile uint32_t*) 0xE0000000)
+#define ITM_TRACE_EN        *((volatile uint32_t*) 0xE0000E00)
+
+void ITM_Sendchar(uint8_t ch){
+
+	// Enable TRCENA
+	DEMCR |= (1<<24);
+
+	//Enable Stimulus Port0
+	ITM_TRACE_EN |= (1<<0);
+
+	// Read FIFO Status in bit[0]:
+	while(! (ITM_STIMULUS_PORT0 & 1));
+
+	// Write to IT Stimulus Port0
+	ITM_STIMULUS_PORT0 = ch;
+}
+
+int _write(int file,char *ptr, int len){
+
+	int DataIdx;
+	for (DataIdx = 0; DataIdx < len; DataIdx++)
+	{
+		ITM_Sendchar(*ptr++);
+	}
+	return len;
+
+}
+
 
 /*
 #@
@@ -518,67 +602,21 @@ void controller(man_t *manip, float *u){
     B_calc(manip);
     C_calc(manip);
 
-    // SECTION DEBUG
 
-    // disp1 = dq_actual[1];// dq_actual[1];
-    // disp2 = ddq_actual[1];// ddq_actual[1];
-    /*
-	uint8_t window_width = 10;
-    float s1, s2, s3, s4;
-    s1 = 0;
-    s2 = 0;
-    s3 = 0;
-    s4 = 0;
-    for(i=0; i < window_width; i++){
-        float a;
-		rbget(&manip->dq0_actual, i, &a);
-        s1 += a;
-		rbget(&manip->dq1_actual, i, &a);
-		s2 += a;
-		rbget(&manip->ddq0_actual, i, &a);
-		s3 += a;
-		rbget(&manip->ddq1_actual, i, &a);
-		s4 += a;
-	}
-	*/
-    dq_actual0 = dq_actual[0];
-    dq_actual1 = dq_actual[1];
-    ddq_actual0 = ddq_actual[0];
-    ddq_actual1 = ddq_actual[1];
-    /*
-    // disp1 = ddq_actual[0];
-    // disp2 = s4/window_width;
-    disp2 = dq_actual[1];
+    //diff(q, q_actual, 2, ep); /* q - q_d */
+    //diff(dq, dq_actual, 2, ed); /* dq - dq_d */
 
 
-	dq_actual[0] = dq_actual0;
-	dq_actual[1] = dq_actual1;
-	ddq_actual[0] = ddq_actual0;
-	ddq_actual[1] = ddq_actual1;
-	*/
-	
-    // !SECTION DEBUG
+    // debug
+    ddq_actual0=ddq_actual[0];
+    ddq_actual1=ddq_actual[1];
+    //!debug
 
+    ep[0]=q[0]-q_actual[0];
+    ep[1]=q[1]-q_actual[1];
 
-
-    diff(dq, dq_actual, 2, ep); /* POSITION ERROR q - q_d */
-    sum(dq, dq_actual, 2, ed); /*VELOCITY ERROR dq - dq_d */
-
-    //ei[0]+=ed[0]*T_C;
-    ei[0]+=(ed[0]*T_C/2);
-    ei[1]+=(ed[1]*T_C/2);
-
-    //*(u)=0.3*(ed[0])+0.1*(ei[0])+ep[0];
-    // *(u+1)=-(0.3*(ed[1])+0.1*(ei[1])+ep[1]);
-
-   // *(u)=0.3*(ed[0])+0.1*(ei[0]);
-    *(u)=80*(ep[0])+10*(ei[0]);
-    *(u+1)=-(200*(ep[1])+30*(ei[1]));
-
-
-    return;
-    diff(q, q_actual, 2, ep); /* q - q_d */
-    diff(dq, dq_actual, 2, ed); /* dq - dq_d */
+    ed[0]=dq[0]-dq_actual[0];
+    ed[1]=dq[1]-dq_actual[1];
 
     ep[0] = abs(ep[0]) < THRESHOLD ? 0:ep[0];
     ep[1] = abs(ep[1]) < THRESHOLD ? 0:ep[1];
@@ -593,14 +631,26 @@ void controller(man_t *manip, float *u){
     sum(Kpep, Kded, 2, y);
     sum(y, ddq, 2, y);
 
+    ui[0]+=y[0]*T_C;
+    ui[1]+=y[1]*T_C;
+
+    *u = ui[0];
+    *(u+1) = ui[1];
+
+    return;
+
     dot(manip->B, 2, 2, y, 2, 1, By); /* B*y */
     dot(manip->C, 2, 2, dq_actual, 2, 1, Cdq); /* C*dq */
     sum(By, Cdq, 2, tau); /* tau = B*y+C*dq  */
 
+
+
+
+
     // TODO: TEST THIS SHIT
 
     d = DET(manip->C);
-    if(d == 0){
+    if(ABS(d) < 1e-5){
         /* if C is not invertible, use the desired values as inputs */
         // TODO: Test and see if it works, otherwise use discrete integration
         *u = dq[0];
@@ -612,6 +662,14 @@ void controller(man_t *manip, float *u){
     diff(tau, Bddq, 2, result); /* tau - B*ddq */
     inv2x2(manip->C, invC); /* inv(C) */
     dot(invC, 2, 2, result, 2, 1, u); /* u = inv(C) * (tau - B*ddq) */
+
+    if(ABS(u[0])>1000 || ABS(u[1])>1000){
+
+    	double a;
+    	a=0;
+
+    }
+
 }
 
 /*
@@ -916,7 +974,7 @@ void update_speeds(man_t *manip){
 	rbpush(&manip->ddq1_actual, a_est);
 }
 
-void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
+void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
     /* T_C = steps*clock_period */
     int8_t dir1, dir2;
     uint32_t f;
@@ -1014,6 +1072,69 @@ void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
     // htim2->Instance->EGR = TIM_EGR_UG;
 }
 
+
+void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
+    /* T_C = steps*clock_period */
+    int8_t dir1, dir2;
+    uint32_t f;
+    int32_t stepdir;
+    uint32_t steps, ARR, CCR;
+    uint16_t prescaler1, prescaler2;
+    float duty;
+
+    /*
+    ARR = (uint32_t) 65000;
+    CCR = (uint32_t) ARR/2;
+    __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+    __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+    htim1->Instance->EGR = TIM_EGR_UG;
+    */
+    // rad2stepdir(u[0], RESOLUTION, (float) 1/T_C, &steps, &dir);
+
+    dir1 = u[0] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    // dir1 = 1; // DEBUG
+    HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
+
+    dir2 = u[1] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    // dir2 = 1; // DEBUG
+    HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
+
+
+
+     steps=(ABS(u[0])/ RESOLUTION)*reduction1*16;
+     prescaler1=(uint16_t) HAL_RCC_GetHCLKFreq() / (PWM_FREQ_1 * 2) - 1;
+     ARR=((1<<32)-1);
+     duty=steps/((M_PI*reduction1*16)/RESOLUTION);
+     duty= duty>1 ? 1: duty;
+    //ARR= steps==0 ? 0: (uint16_t) ((84000000/(10500))/steps);
+
+    __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
+	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+	htim1->Instance->EGR = TIM_EGR_UG;
+    CCR =(uint32_t) (duty*ARR );
+	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+	htim1->Instance->EGR = TIM_EGR_UG;
+
+	steps=(ABS(u[1])/ RESOLUTION)*reduction2*16;
+	prescaler2=(uint16_t) HAL_RCC_GetHCLKFreq() / (PWM_FREQ_2 * 2) - 1;
+	//ARR=steps==0 ? 0: (uint16_t) ((84000000/(10500))/steps);
+	//CCR = (steps == 0 || ARR==0 )? 0 : (ARR-1)/2;
+	ARR=((1<<32)-1);
+	duty=steps/((M_PI*reduction2*16)/RESOLUTION);
+	duty= duty>1 ? 1: duty;
+	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);
+	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+	htim2->Instance->EGR = TIM_EGR_UG;
+	CCR =(uint32_t) (duty*ARR );
+	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+	htim2->Instance->EGR = TIM_EGR_UG;
+
+
+
+}
+
+
+
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
     HAL_TIM_Base_Start_IT(htim1);
     HAL_TIM_Base_Start_IT(htim2);
@@ -1074,6 +1195,30 @@ void setup_encoders(TIM_HandleTypeDef *htim){
 
 
 
+void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u){
+
+	float set_point1,set_point2,measure1, measure2;
+
+	rbpeek(&manip->dq0,&set_point1);
+	rbpeek(&manip->dq1,&set_point2);
+
+	//ddq_actual0=set_point1;
+	//ddq_actual1=set_point2;
+
+
+
+	rblast(&manip->dq0_actual,&measure1);
+	rblast(&manip->dq1_actual,&measure2);
+
+
+	PID_update(pid1,set_point1, measure1,T_C);
+	PID_update(pid2,set_point2, measure2,T_C);
+
+	*u=pid1->out;
+	*(u+1)=pid2->out;
+
+
+}
 
 
 

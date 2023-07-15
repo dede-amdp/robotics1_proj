@@ -20,7 +20,9 @@
 
 */
 
-int PID_init(pid_controller *pid, float KP,float TI, float TD, float N){
+
+
+int PID_init(pid_controller_t *pid, float KP,float TI, float TD, float N){
 
 	pid->Kp= KP;
 	pid->Ti=TI;
@@ -34,7 +36,7 @@ int PID_init(pid_controller *pid, float KP,float TI, float TD, float N){
 	pid->out=0.f;
 
 
-	/*NB the limit must be setted using the proper method */
+	/*NB the limit must be set using the proper method */
 	pid->lim_out_min=0.f;
 	pid->lim_out_max=0.f;
 
@@ -58,7 +60,7 @@ int PID_init(pid_controller *pid, float KP,float TI, float TD, float N){
 - float lim_integ_max ;
 
 */
-int set_limit(pid_controller *pid, float lim_out_min, float lim_out_max, float lim_integ_min,float lim_integ_max ){
+int set_limit(pid_controller_t *pid, float lim_out_min, float lim_out_max, float lim_integ_min,float lim_integ_max ){
 
 	pid->lim_out_min=lim_out_min;
 	pid->lim_out_max=lim_out_max;
@@ -84,7 +86,7 @@ pid->out: contain the value calculated by the controller
 
 */
 
-int PID_update(pid_controller *pid, float set_point , float measure, float T_C){
+int PID_update(pid_controller_t *pid, float set_point , float measure, float T_C){
 
 	float u=0.f;
 	float error=0.f;
@@ -103,12 +105,14 @@ int PID_update(pid_controller *pid, float set_point , float measure, float T_C){
 
 	/*integral contribute*/
 
-	pid->integrator=(pid->integrator+(pid->Kp/pid->Ti)*0.5f*T_C)*(error-pid->prev_err);
+	pid->integrator+=(pid->Kp/pid->Ti)*0.5f*T_C*(error-pid->prev_err);
 
-	/* tentative of anti wind-up*/
+	/* try of anti wind-up*/
 
 	if(pid->integrator > pid->lim_integ_max){
+
 		pid->integrator=pid->lim_integ_max;
+
 	}else if(pid->integrator < pid->lim_integ_min)
 	{
 		pid->integrator=pid->lim_integ_min;
@@ -120,7 +124,7 @@ int PID_update(pid_controller *pid, float set_point , float measure, float T_C){
 
 	/* output  */
 
-	u=proportional+pid->integrator+pid->derivative;
+	u=proportional+pid->integrator+0*pid->derivative;
 
 
 	if(u>pid->lim_out_max)
