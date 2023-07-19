@@ -608,8 +608,8 @@ void controller(man_t *manip, float *u){
 
 
     // debug
-    ddq_actual0=ddq_actual[0];
-    ddq_actual1=ddq_actual[1];
+    //ddq_actual0=ddq_actual[0];
+    //ddq_actual1=ddq_actual[1];
     //!debug
 
     ep[0]=q[0]-q_actual[0];
@@ -1003,6 +1003,12 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
     /* actuation of the first motor */
     //prescaler1 = htim1->Instance->PSC;
 
+
+
+
+
+
+
     //ARR = (uint32_t) (HAL_RCC_GetPCLK1Freq()*2/(PWM_FREQ_1-1));
     //ARR *= 16;
     //ARR /= reduction1;
@@ -1095,37 +1101,104 @@ void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
     // dir1 = 1; // DEBUG
     HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
 
-    dir2 = u[1] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
     // dir2 = 1; // DEBUG
     HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
 
 
-
-     steps=(ABS(u[0])/ RESOLUTION)*reduction1*16;
-     prescaler1=(uint16_t) HAL_RCC_GetHCLKFreq() / (PWM_FREQ_1 * 2) - 1;
-     ARR=((1<<32)-1);
-     duty=steps/((M_PI*reduction1*16)/RESOLUTION);
-     duty= duty>1 ? 1: duty;
-    //ARR= steps==0 ? 0: (uint16_t) ((84000000/(10500))/steps);
-
+    prescaler1= (uint16_t)  8400;//12000 ;//8400;
+    f=HAL_RCC_GetPCLK1Freq()*2;
+    ARR= ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
+    CCR= ARR /2;
     __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
-	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
-	htim1->Instance->EGR = TIM_EGR_UG;
-    CCR =(uint32_t) (duty*ARR );
+   	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
 	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
 	htim1->Instance->EGR = TIM_EGR_UG;
 
-	steps=(ABS(u[1])/ RESOLUTION)*reduction2*16;
-	prescaler2=(uint16_t) HAL_RCC_GetHCLKFreq() / (PWM_FREQ_2 * 2) - 1;
+	prescaler2= (uint16_t)  8400;//12000 ;//8400;
+	f=HAL_RCC_GetPCLK1Freq()*2;
+	ARR=  ABS(u[1]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
+	CCR= ARR /2;
+	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);//2625
+	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+	htim2->Instance->EGR = TIM_EGR_UG;
+
+    return;
+
+    prescaler1= (uint16_t) ((MAX_SPEED/0.10541435704)-1);//+336;
+    f=HAL_RCC_GetPCLK1Freq()*2;
+    ARR=  (uint32_t)  (f/( (float) prescaler1+1 )* 200*16*reduction1* (ABS(u[0])/(2*M_PI)));
+    CCR= ARR /2;
+    __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
+   	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+	htim1->Instance->EGR = TIM_EGR_UG;
+
+
+
+	prescaler2= (uint16_t) ((MAX_SPEED/(0.10541435704*2))-1);//+336; // x2 per tenere conto della riduzione dimezzata
+    f=HAL_RCC_GetPCLK1Freq()*2;
+    ARR=  (uint32_t)  (f/( (float) prescaler2+1 )* 200*16*reduction1* (ABS(u[1])/(2*M_PI)));
+    CCR= ARR /2;
+    __HAL_TIM_SET_PRESCALER(htim2, prescaler2);//2625
+   	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+	htim2->Instance->EGR = TIM_EGR_UG;
+
+
+
+
+    return;
+
+     steps=(uint32_t) ((ABS(u[0])/ RESOLUTION)*reduction1*16);
+
+     steps= (steps>250000) ? 250000:steps;
+     prescaler1= steps==0 ? 1:(uint16_t) ((HAL_RCC_GetPCLK1Freq()*2 / (steps * 2)) - 1);
+
+     // DEBUG
+     	disp1=prescaler1;
+     //! DEBUG
+
+     //prescaler1=(uint16_t) ((HAL_RCC_GetHCLKFreq() / (PWM_FREQ_1 * 2)) - 1);
+
+
+     //ARR=((1<<30)-1);
+     ARR=4294967296-1;
+     CCR = steps==0 ? ARR: (uint32_t) (ARR/2);
+     //duty=steps/((M_PI*reduction1*16)/RESOLUTION);
+    // duty= duty>1 ? 1: duty;
+    //ARR= steps==0 ? 0: (uint16_t) ((84000000/(10500))/steps);
+    __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
+	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+
+	//htim1->Instance->EGR = TIM_EGR_UG;
+
+	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+	htim1->Instance->EGR = TIM_EGR_UG;
+
+
+
+
+	steps=(uint32_t)((ABS(u[1])/ RESOLUTION)*reduction2*16);
+	steps= (steps>250000) ? 250000:steps;
+	 prescaler2= steps==0 ? 1:(uint16_t) ((HAL_RCC_GetPCLK1Freq()*2 / (steps * 2)) - 1);
+	// DEBUG
+	 f=HAL_RCC_GetPCLK1Freq()*2;
+
+	disp2=prescaler2;
+	//! DEBUG
+
+
 	//ARR=steps==0 ? 0: (uint16_t) ((84000000/(10500))/steps);
 	//CCR = (steps == 0 || ARR==0 )? 0 : (ARR-1)/2;
-	ARR=((1<<32)-1);
-	duty=steps/((M_PI*reduction2*16)/RESOLUTION);
-	duty= duty>1 ? 1: duty;
+	 ARR=4294967296-1;
+	//duty=steps/((M_PI*reduction2*16)/RESOLUTION);
+	//duty= duty>1 ? 1: duty;
+	CCR =steps==0 ? ARR:(uint32_t) (ARR/2);
 	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);
 	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
-	htim2->Instance->EGR = TIM_EGR_UG;
-	CCR =(uint32_t) (duty*ARR );
+	//htim2->Instance->EGR = TIM_EGR_UG;
 	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
 	htim2->Instance->EGR = TIM_EGR_UG;
 
@@ -1195,27 +1268,42 @@ void setup_encoders(TIM_HandleTypeDef *htim){
 
 
 
-void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u){
+void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u , float setpoint){
 
 	float set_point1,set_point2,measure1, measure2;
 
 	rbpeek(&manip->dq0,&set_point1);
 	rbpeek(&manip->dq1,&set_point2);
 
+	//set_point1 = 0;
+	//set_point2 = setpoint;
+
 	//ddq_actual0=set_point1;
 	//ddq_actual1=set_point2;
+
+
+
 
 
 
 	rblast(&manip->dq0_actual,&measure1);
 	rblast(&manip->dq1_actual,&measure2);
 
+	disp1=measure1;
+	disp2=measure2;
+
+	printf("%d ;%f ; %f \n",count ,setpoint,  measure2 );
+
 
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
 
+
+	ddq_actual1=pid2->out;
+
 	*u=pid1->out;
 	*(u+1)=pid2->out;
+	//*(u)=0;
 
 
 }

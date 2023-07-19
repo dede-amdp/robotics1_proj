@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include<stdint.h>
+#include<stdio.h>
 #include "custom.h"
 #include "pid_controller.h"
 #include <math.h>
@@ -84,9 +85,10 @@ int main(void)
   /* USER CODE BEGIN 1 */
   rate_t rate;
   float v[2], v_est, a_est;
-   char *data = "\n";
+  char *data = "\n";
   float i = 1*T_C;
   float pos;
+  float setpoint;
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
   /* USER CODE END 1 */
@@ -123,7 +125,7 @@ int main(void)
   PID_init(&pid2,KP2,TI2,TD2,N2);
 
   set_limit(&pid1,-4*M_PI,4*M_PI,-M_PI/2,M_PI/2);/*initialize the pid controllers output limits*/
-  set_limit(&pid2,-2*M_PI,2*M_PI,-M_PI/2,M_PI/2);
+  set_limit(&pid2,-8*M_PI,8*M_PI,-6*(M_PI/2),6*(M_PI/2));
 
 
 
@@ -147,24 +149,30 @@ int main(void)
     //controller(&manip, v); /* apply the control law to find the input */
     /* apply the inputs to the motors */
 
-    // v[0] = 0; // 0.8*sin(HAL_GetTick()/1000);
-    /*
-    if (limit_switch == -1){
-    	  v[0] = 0.3*sin(HAL_GetTick()/1000);
-    }
-    else {
-    	v[0]=0;
-    }*/
 
-    PID_controller( &manip, &pid1, &pid2, &v);
+   //debug
+    //if(count< 100 ){
+
+    	//setpoint= 0.5;
 
 
+    //}else{
+    	setpoint=0;
+    //}
+    // ! debug NB ricorda di togliere il setpoint dal valore passato a pid e prenderlo direttamente da manip
+
+     PID_controller( &manip, &pid1, &pid2, v ,setpoint);
 
 
-    ddq_actual0 = v[0];
-    ddq_actual1= v[1];
-    rblast(&manip.dq0_actual,&dq_actual0);
-    rblast(&manip.dq1_actual,&dq_actual1);
+   // v[0]=0;
+   // v[1]=setpoint;
+
+
+
+    //ddq_actual0 = v[0];
+    //ddq_actual1= v[1];
+    //rblast(&manip.dq0_actual,&dq_actual0);
+    //rblast(&manip.dq1_actual,&dq_actual1);
 
     //rbpeek(&manip.dq0,&ddq_actual0);
     //rbpeek(&manip.dq1,&ddq_actual1);
@@ -180,14 +188,19 @@ int main(void)
 
     apply_position_input(&htim2, &htim5, v);
 
-    disp1=HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_15);
-    disp2=HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0);
+    rblast(&manip.dq0_actual,&dq_actual0);
+    rblast(&manip.dq1_actual,&dq_actual1);
+
+    //printf("%d ;%f ; %f \n",count ,setpoint, dq_actual1 );
+    //fflush(stdout);
+    //disp1=HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_15);
+    //disp2=HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
     rate_sleep(&rate); /* wait with a fixed frequency */
     //HAL_Delay((uint32_t) (T_C*1000));
-    //count++;
+    count++;
   }
   /* stop timers */
   stop_timers(&htim3, &htim4, &htim2, &htim5);

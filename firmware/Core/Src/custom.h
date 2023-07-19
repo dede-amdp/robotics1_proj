@@ -34,7 +34,7 @@ bytes:
 /* RESOLUTION OF THE STEPPER MOTOR (in rads) */
 #define RESOLUTION 0.0314159
 /* MAX SPEED of rotation of the motors (in rads/s) */
-#define MAX_SPEED 4
+#define MAX_SPEED 2
 /* PWM frequency first motor */
 #define PWM_FREQ_1 1800
 /* PWM frequency second motor */
@@ -58,14 +58,15 @@ bytes:
 #define ABS(A) (SIGN(A)*A)
 
 /* CONTROLLER PARAMETER */
-#define KP1 3.8
-#define KP2 1.8
+#define KP1 2.2688
+#define KP2  2.1688
 
-#define TI1 0.005
-#define TI2 0.005
+#define TI1 0.033
+#define TI2  0.043
+
 
 #define TD1 0.005
-#define TD2 0.005
+#define TD2 0.000195
 
 #define N1 5
 #define N2 5
@@ -173,7 +174,7 @@ void pseudo_inv(float *M, float *trM, float *tempM, float *adjM, float *subM, fl
 void B_calc(man_t *manip);
 void C_calc(man_t *manip);
 void controller(man_t *manip, float *u);
-void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u);
+void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
 void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
 void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual,ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est);
 

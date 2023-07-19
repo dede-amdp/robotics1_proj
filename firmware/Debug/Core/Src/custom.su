@@ -23,9 +23,9 @@
 ../Core/Src/custom.c:838:6:read_encoders	48	static
 ../Core/Src/custom.c:964:6:update_speeds	40	static
 ../Core/Src/custom.c:977:6:apply_velocity_input	56	static
-../Core/Src/custom.c:1076:6:apply_position_input	64	static
-../Core/Src/custom.c:1138:6:start_timers	24	static
-../Core/Src/custom.c:1153:6:stop_timers	24	static
-../Core/Src/custom.c:1161:6:log_data	120	static
-../Core/Src/custom.c:1185:6:setup_encoders	24	static
-../Core/Src/custom.c:1198:6:PID_controller	40	static
+../Core/Src/custom.c:1082:6:apply_position_input	56	static
+../Core/Src/custom.c:1211:6:start_timers	24	static
+../Core/Src/custom.c:1226:6:stop_timers	24	static
+../Core/Src/custom.c:1234:6:log_data	120	static
+../Core/Src/custom.c:1258:6:setup_encoders	24	static
+../Core/Src/custom.c:1271:6:PID_controller	72	static
