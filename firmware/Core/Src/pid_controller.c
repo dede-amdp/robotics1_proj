@@ -124,7 +124,7 @@ int PID_update(pid_controller_t *pid, float set_point , float measure, float T_C
 
 	/* output  */
 
-	u=proportional+pid->integrator+0*pid->derivative;
+	u=proportional+pid->integrator+pid->derivative;
 
 
 	if(u>pid->lim_out_max)

@@ -7,7 +7,7 @@ def ser_init(serial_path:str=None) -> bool:
     print("Starting Serial Connection:\n")
     found = False
     if serial_path is None:
-        ports = ["/dev/tty.usbmodem11303"]+[f"/dev/ttyS{i}" for i in range(10)]+[f"/dev/tty{i}" for i in range(8,100)] + [f"COM{i}" for i in range(10)]
+        ports = ["/dev/tty.usbmodem11203"]+[f"/dev/ttyS{i}" for i in range(10)]+[f"/dev/tty{i}" for i in range(8,100)] + [f"COM{i}" for i in range(10)]
         for port in ports:
             try:
                 ser = serial.Serial(f"{port}", 115200, timeout=10000)  # open serial port

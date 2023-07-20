@@ -58,15 +58,15 @@ bytes:
 #define ABS(A) (SIGN(A)*A)
 
 /* CONTROLLER PARAMETER */
-#define KP1 2.2688
+#define KP1   2.4  //2.2688
 #define KP2  2.1688
 
 #define TI1 0.033
 #define TI2  0.043
 
 
-#define TD1 0.005
-#define TD2 0.000195
+#define TD1 0.0075
+#define TD2 0.0075
 
 #define N1 5
 #define N2 5
@@ -154,6 +154,7 @@ extern float ddq_actual0, ddq_actual1;
 extern ringbuffer_t timestamps;
 extern uint32_t count;
 extern float ui[2];
+extern float pos_prec[2];
 
 
 extern int limit_switch;
@@ -185,7 +186,7 @@ void rate_sleep(rate_t *rate);
 void read_encoders(man_t *manip);
 void update_speeds(man_t *manip);
 void apply_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u);
-void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u);
+void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u,float *pos);
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 

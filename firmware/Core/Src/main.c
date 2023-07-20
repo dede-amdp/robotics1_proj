@@ -87,7 +87,7 @@ int main(void)
   float v[2], v_est, a_est;
   char *data = "\n";
   float i = 1*T_C;
-  float pos;
+  float pos[2];
   float setpoint;
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
@@ -186,10 +186,13 @@ int main(void)
     // HAL_UART_Transmit_DMA(&huart2, &tx_data, 17);
     // !SECTION DEBUG
 
-    apply_position_input(&htim2, &htim5, v);
+    rblast(&manip.q0_actual,&pos[0]);
+    rblast(&manip.q1_actual,&pos[1]);
 
-    rblast(&manip.dq0_actual,&dq_actual0);
-    rblast(&manip.dq1_actual,&dq_actual1);
+    apply_position_input(&htim2, &htim5, v, pos);
+
+    //rblast(&manip.dq0_actual,&dq_actual0);
+    //rblast(&manip.dq1_actual,&dq_actual1);
 
     //printf("%d ;%f ; %f \n",count ,setpoint, dq_actual1 );
     //fflush(stdout);

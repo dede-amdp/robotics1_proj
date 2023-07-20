@@ -36,6 +36,8 @@ uint32_t count = 0;
 int limit_switch = 1;
 float ui[2]= {0.0 , 0.0};
 
+float pos_prec[2]={0.f ,0.f};
+
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
@@ -983,7 +985,40 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
     uint32_t prescaler1, prescaler2;
     float clock_period;
 
+    dir1 = u[0] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+       // dir1 = 1; // DEBUG
+       HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
+
+       dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+       // dir2 = 1; // DEBUG
+       HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
+
+
+       prescaler1= (uint16_t)  8400;//12000 ;//8400;
+       f=HAL_RCC_GetPCLK1Freq()*2;
+       ARR= ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
+       CCR= ARR /2;
+       __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
+      	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+   	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+   	htim1->Instance->EGR = TIM_EGR_UG;
+
+   	prescaler2= (uint16_t)  8400;//12000 ;//8400;
+   	f=HAL_RCC_GetPCLK1Freq()*2;
+   	ARR=  ABS(u[1]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
+   	CCR= ARR /2;
+   	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);//2625
+   	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+   	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+   	htim2->Instance->EGR = TIM_EGR_UG;
+
+    return
+
+
+
     /*
+     *
+     *
     ARR = (uint32_t) 65000;
     CCR = (uint32_t) ARR/2;
     __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
@@ -1079,7 +1114,7 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
 }
 
 
-void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
+void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u , float *pos){
     /* T_C = steps*clock_period */
     int8_t dir1, dir2;
     uint32_t f;
@@ -1087,6 +1122,8 @@ void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
     uint32_t steps, ARR, CCR;
     uint16_t prescaler1, prescaler2;
     float duty;
+    float u0,u1;
+    float tc0,tc1;
 
     /*
     ARR = (uint32_t) 65000;
@@ -1096,6 +1133,58 @@ void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
     htim1->Instance->EGR = TIM_EGR_UG;
     */
     // rad2stepdir(u[0], RESOLUTION, (float) 1/T_C, &steps, &dir);
+
+    if (ABS(u[0]-pos[0])<0.01){
+    	tc0= 1000000;
+    }else{
+    tc0 = sqrt(2*M_PI*ABS(u[0]-pos[0])/1.05);
+    }
+
+    if (ABS(u[1]-pos[1])<0.01){
+        	tc1= 1000000;
+        }else{
+        tc1 = sqrt(2*M_PI*ABS(u[1]-pos[1])/0.85);   //1.5 ----> come se fosse un jerk
+        }
+
+
+    u0=(u[0]-pos[0])/tc0;
+    u1=(u[1]-pos[1])/tc1;
+
+    //printf("%d ;%f ; %f \n",count ,u1, tc1 );
+    //fflush(stdout);
+
+        dir1 = u0 < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+       // dir1 = 1; // DEBUG
+       HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
+
+       dir2 = u1 > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+       // dir2 = 1; // DEBUG
+       HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
+
+
+
+
+       prescaler1= (uint16_t) 8400;//12000 ;//8400;
+       f=HAL_RCC_GetPCLK1Freq()*2;
+       ARR= ABS(u0) < 0.01 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u0)*reduction1*16*prescaler1));
+       CCR= ARR /2;
+       __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
+      	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+   	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+   	htim1->Instance->EGR = TIM_EGR_UG;
+
+   	prescaler2= (uint16_t) 8400;//12000 ;//8400;
+   	f=HAL_RCC_GetPCLK1Freq()*2;
+   	ARR=  ABS(u1) < 0.01 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u1)*reduction2*16*prescaler2));
+   	CCR= ARR /2;
+   	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);//2625
+   	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+   	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+   	htim2->Instance->EGR = TIM_EGR_UG;
+
+
+
+    return
 
     dir1 = u[0] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
     // dir1 = 1; // DEBUG
@@ -1272,13 +1361,13 @@ void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2,
 
 	float set_point1,set_point2,measure1, measure2;
 
-	rbpeek(&manip->dq0,&set_point1);
-	rbpeek(&manip->dq1,&set_point2);
+	rbpeek(&manip->q0,&set_point1);
+	rbpeek(&manip->q1,&set_point2);
 
 	//set_point1 = 0;
 	//set_point2 = setpoint;
 
-	//ddq_actual0=set_point1;
+	dq_actual0=set_point1;
 	//ddq_actual1=set_point2;
 
 
@@ -1286,20 +1375,23 @@ void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2,
 
 
 
-	rblast(&manip->dq0_actual,&measure1);
-	rblast(&manip->dq1_actual,&measure2);
+	rblast(&manip->q0_actual,&measure1);
+	rblast(&manip->q1_actual,&measure2);
 
 	disp1=measure1;
 	disp2=measure2;
 
-	printf("%d ;%f ; %f \n",count ,setpoint,  measure2 );
+
 
 
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
 
-
+	ddq_actual0=pid1->out;
 	ddq_actual1=pid2->out;
+
+
+	printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
 
 	*u=pid1->out;
 	*(u+1)=pid2->out;
