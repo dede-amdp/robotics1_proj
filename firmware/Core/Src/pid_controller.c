@@ -22,8 +22,10 @@
 
 
 
-int PID_init(pid_controller_t *pid, float KP,float TI, float TD, float N){
+int PID_init(pid_controller_t *pid, float KP,float TI, float TD, float N,int Controller_type){
 
+
+	pid->type=Controller_type;
 	pid->Kp= KP;
 	pid->Ti=TI;
 	pid->Td=TD;
@@ -105,6 +107,8 @@ int PID_update(pid_controller_t *pid, float set_point , float measure, float T_C
 
 	/*integral contribute*/
 
+
+
 	pid->integrator+=(pid->Kp/pid->Ti)*0.5f*T_C*(error-pid->prev_err);
 
 	/* try of anti wind-up*/
@@ -119,13 +123,20 @@ int PID_update(pid_controller_t *pid, float set_point , float measure, float T_C
 	}
 
 
-	/*derivative contribute*/
-	pid->derivative= (2*(pid->Kp)*alpha*error - pid->derivative*(1-(2*alpha)/pid->N))/(1+(2*alpha)/pid->N);
 
 	/* output  */
 
-	u=proportional+pid->integrator+pid->derivative;
 
+	if (pid->type>0){
+
+	u=proportional+pid->integrator;
+
+	}else{
+
+	/*derivative contribute*/
+	pid->derivative= (2*(pid->Kp)*alpha*error - pid->derivative*(1-(2*alpha)/pid->N))/(1+(2*alpha)/pid->N);
+	u=proportional+pid->integrator+pid->derivative;
+	}
 
 	if(u>pid->lim_out_max)
 	{

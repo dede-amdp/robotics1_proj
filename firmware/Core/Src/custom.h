@@ -58,18 +58,33 @@ bytes:
 #define ABS(A) (SIGN(A)*A)
 
 /* CONTROLLER PARAMETER */
-#define KP1   2.4  //2.2688
-#define KP2  2.1688
 
-#define TI1 0.033
-#define TI2  0.043
-
-
-#define TD1 0.0075
-#define TD2 0.0075
 
 #define N1 5
 #define N2 5
+
+
+/* PID PARAMETER  for position control*/
+#define KP_P1  2.4  //2.2688
+#define KP_P2  2.1688
+
+#define TI_P1 0.033
+#define TI_P2  0.043
+
+
+#define TD_P1 0.0075
+#define TD_P2 0.0075
+
+/* PI PARAMETER  for velocity control*/
+#define KP_V1  0.291  //2.2688
+#define KP_V2  0.291
+
+#define TI_V1 0.64
+#define TI_V2  0.64
+
+
+
+
 
 
 
@@ -133,7 +148,7 @@ extern uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmis
 extern man_t manip;
 
 
-extern pid_controller_t pid1, pid2 ;
+extern pid_controller_t pid_pos1, pid_pos2,pid_vel1,pid_vel2 ;
 
 extern uint32_t previous_trigger;
 extern uint8_t triggered;
@@ -175,7 +190,8 @@ void pseudo_inv(float *M, float *trM, float *tempM, float *adjM, float *subM, fl
 void B_calc(man_t *manip);
 void C_calc(man_t *manip);
 void controller(man_t *manip, float *u);
-void PID_controller(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
+void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
+void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
 void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
 void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual,ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est);
 

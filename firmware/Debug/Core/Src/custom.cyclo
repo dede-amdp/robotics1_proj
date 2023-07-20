@@ -23,9 +23,10 @@ custom.c:814:6:rate_sleep	2
 custom.c:840:6:read_encoders	7
 custom.c:966:6:update_speeds	1
 custom.c:979:6:apply_velocity_input	3
-custom.c:1117:6:apply_position_input	5
-custom.c:1300:6:start_timers	3
-custom.c:1315:6:stop_timers	1
-custom.c:1323:6:log_data	2
-custom.c:1347:6:setup_encoders	1
-custom.c:1360:6:PID_controller	1
+custom.c:1022:6:apply_position_input	5
+custom.c:1129:6:start_timers	3
+custom.c:1144:6:stop_timers	1
+custom.c:1152:6:log_data	2
+custom.c:1176:6:setup_encoders	1
+custom.c:1189:6:PID_controller_position	1
+custom.c:1234:6:PID_controller_velocity	1

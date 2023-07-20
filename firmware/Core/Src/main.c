@@ -121,11 +121,20 @@ int main(void)
   /* USER CODE BEGIN 2 */
   init_man(&manip, &htim3, &htim4); /* initialize the manipulator struct */
 
-  PID_init(&pid1,KP1,TI1,TD1,N1); /*initialize the pid controllers*/
-  PID_init(&pid2,KP2,TI2,TD2,N2);
+  /* PID controllers*/
 
-  set_limit(&pid1,-4*M_PI,4*M_PI,-M_PI/2,M_PI/2);/*initialize the pid controllers output limits*/
-  set_limit(&pid2,-8*M_PI,8*M_PI,-6*(M_PI/2),6*(M_PI/2));
+  PID_init(&pid_pos1,KP_P1,TI_P1,TD_P1,N1,0); /*initialize the PID controllers for position*/
+  PID_init(&pid_pos2,KP_P2,TI_P2,TD_P2,N2,0);
+
+  set_limit(&pid_pos1,-4*M_PI,4*M_PI,-M_PI/2,M_PI/2);/*initialize the PID controllers output limits*/
+  set_limit(&pid_pos2,-8*M_PI,8*M_PI,-6*(M_PI/2),6*(M_PI/2));
+
+  /* PI controllers*/
+  PID_init(&pid_vel1,KP_V1,TI_V1,0,N1,1); /*initialize the PI controllers for velocity*/
+  PID_init(&pid_vel2,KP_V2,TI_V2,0,N2,1);
+
+  set_limit(&pid_vel1,-4*M_PI,4*M_PI,-M_PI/2,M_PI/2);/*initialize the PI controllers output limits*/
+  set_limit(&pid_vel2,-8*M_PI,8*M_PI,-6*(M_PI/2),6*(M_PI/2));
 
 
 
@@ -161,7 +170,7 @@ int main(void)
     //}
     // ! debug NB ricorda di togliere il setpoint dal valore passato a pid e prenderlo direttamente da manip
 
-     PID_controller( &manip, &pid1, &pid2, v ,setpoint);
+     PID_controller_position( &manip, &pid_pos1, &pid_pos2, v ,setpoint);
 
 
    // v[0]=0;
