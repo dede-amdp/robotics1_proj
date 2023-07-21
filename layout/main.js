@@ -8,6 +8,7 @@ const serial_com_btn = document.getElementById('start-serial-btn'); // button to
 const line_btn = document.getElementById('line-btn'); // line tool button
 const circle_btn = document.getElementById('circle-btn'); // circle tool button
 const penup_btn = document.getElementById('penup-btn'); // pen-up button
+const homing_btn = document.getElementById('homing-btn');
 var points = []; // list of points -> end effector coordinates
 var circle_definition = []; // points needed to define a circle (radius and arc)
 var man, traj; // manipulator and trajectory instance
@@ -33,6 +34,7 @@ serial_com_btn.addEventListener('click', handle_serial);
 line_btn.addEventListener('click', () => {tool = line_tool;});
 circle_btn.addEventListener('click', () => {tool = circle_tool;});
 penup_btn.addEventListener('click', () => {penup = !penup;})
+homing_btn.addEventListener('click', eel.py_homing_cmd);
 
 // get continuous updates on mouse position
 input_canvas.addEventListener('mousemove', (e) => {
