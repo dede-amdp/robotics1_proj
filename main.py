@@ -5,6 +5,7 @@ import numpy as np # arrays
 from time import sleep as tsleep
 from math import cos, sin, tan
 from struct import pack, unpack
+from binascii import unhexlify
 
 from sys import stderr # standard error stream
 from signal import signal, SIGINT # close the serial even if the server is forced to close
@@ -87,12 +88,15 @@ def debug_plotXY(x, y, name="image"):
     plt.close()
 
 
-def d2h(d: float): # double to hex
+def d2h(d: float) -> str: # double to hex
     # < = little endian
-    # q = long (double)
+    # Q = long (double)
     # d = double
     # check: https://docs.python.org/2/library/struct.html
     return hex(unpack('<Q', pack('<d', d))[0]).ljust(18,"0")
+
+def h2d(string: str) -> float: # hex to double
+    return unpack('>f', unhexlify(string))[0]
 
 
 
@@ -122,6 +126,7 @@ def send_data(msg_type: str, **data):
                 scm.write_serial(msg_str) # send data through the serial com
                 print(msg_str)
 
+                '''
                 pos = tpy.dk([data['q'][0][i], data['q'][1][i]], sizes)
                 log(
                     time=i*settings['Tc'],
@@ -133,7 +138,7 @@ def send_data(msg_type: str, **data):
                     ddq1=data['ddq'][1][i],
                     x=pos[0],
                     y=pos[1]
-                )
+                )'''
                 # TODO: when reading the actual data from the manipulator, update the remaining data
                 # it does not matter if the update is done in another moment, it still refers to the time when the reference signal is applied
                 tsleep(settings['data_rate']) # regulate the speed at which data is sent
@@ -160,15 +165,30 @@ def py_log(msg):
 
 @eel.expose
 def py_get_data():
+
+    # local method to interpret the message read on the serial com
+    def read_position() -> list[float]:
+        string: str = scm.read_serial() # the msg structure: "0x00000000:0x00000000" => "(hex) q0:(hex) q1"
+        values: list[str] = string.replace('0x', '').split(":")
+        q = [h2d(values[0]), h2d(values[1])]
+        points = tpy.dk(np.array(q), sizes)
+        return [points[0,0], points[1,0]]
+
     try:
-        data = eel.js_get_data()()
+        data: list = eel.js_get_data()()
+        # add an initial patch to move the manipulator to the correct starting position
         if len(data) < 1: 
             raise Exception("Not Enough Points to build a Trajectory")
+        current_q = read_position()
+        print(current_q)
+        data = [{'type':'line', 'points':[current_q, data[0]['points'][0]], 'data':{'penup':True}}] + data
+        print(data[0], data[1])
         # data contains the trajectory patches to stitch together
         # trajectory = {'type', 'points', 'data'}
         # example:
         # line_t = {'type':'line', 'points': [p0, p1], 'data':[penup]}
         # circle_t = {'type':'circle', 'points': [a, b], 'data':[center, radius, penup, ...]}
+        # where 'points' will be an array of arrays of size 2 (both the motors' positions)
         q0s = []
         q1s = []
         penups = []
@@ -223,7 +243,10 @@ def py_log_data():
         file.write(content)
         file.close() # this is unnecessary because the with statement handles it already, but better safe than sorry
     
-
+@eel.expose
+def py_homing_cmd():
+    # send the homing command 
+    scm.write_serial('HOM:'+('0'*18+':')*6+'0')
 
 
 @eel.expose
