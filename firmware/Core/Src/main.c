@@ -151,6 +151,8 @@ int main(void)
 
   while (1)
   {
+	 homing(&manip, &htim2, &htim5, &pid_vel1, &pid_vel2)  ;
+
     // read_encoders(&htim3, &htim4, &manip);
     update_speeds(&manip);
     /* log data */

@@ -16,8 +16,11 @@ man_t manip;
 
 pid_controller_t pid_pos1, pid_pos2, pid_vel1, pid_vel2;
 
-uint32_t previous_trigger = 0;
-uint8_t triggered = 0;
+uint32_t previous_trigger1 = 0;
+uint32_t previous_trigger2 = 0;
+
+uint8_t triggered1 = 0;
+uint8_t triggered2 = 0;
 
 /* controller parameters */
 const float Kp[4] = {0.8,0,0,0.8};
@@ -33,7 +36,8 @@ float disp1, disp2;
 float dq_actual0, dq_actual1;
 float ddq_actual0, ddq_actual1;
 uint32_t count = 0;
-int limit_switch = 1;
+int limit_switch1 = 1;
+int limit_switch2 = 1;
 float ui[2]= {0.0 , 0.0};
 
 float pos_prec[2]={0.f ,0.f};
@@ -119,15 +123,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     // TODO: Implement limit switch handling
     uint32_t now;
     now = HAL_GetTick();
-    if((now - previous_trigger) > DEBOUNCE_DELAY){
-        if(!triggered){
-          limit_switch *= -1;
+
+    if((now - previous_trigger1) > DEBOUNCE_DELAY ){
+        if(!triggered1){
+          limit_switch1 *= -1;
+          /* Velocity and acceleration are set equal to zero*/
+          rbpush(&manip.dq0_actual, 0);
+          rbpush(&manip.ddq0_actual, 0);
+          rbpush(&manip.q0_actual, -2.1458647);  //set initial position
             // SECTION - DEBUG
+          printf("triggered %d \n",count);
+          fflush(stdout);
             HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
             // !SECTION - DEBUG
         }
-        triggered = 1-triggered;
-        previous_trigger = now;
+        triggered1 = 1-triggered1;
+        previous_trigger1 = now;
     }
 }
 
@@ -1200,10 +1211,6 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	//ddq_actual1=set_point2;
 
 
-
-
-
-
 	rblast(&manip->q0_actual,&measure1);
 	rblast(&manip->q1_actual,&measure2);
 
@@ -1220,7 +1227,7 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	ddq_actual1=pid2->out;
 
 
-	printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
+	//printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
 
 	*u=pid1->out;
 	*(u+1)=pid2->out;
@@ -1270,7 +1277,52 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 
 
 
+void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid_controller_t *pid1,pid_controller_t *pid2){
 
+    float u[2]={0, 0};
+    float pos[2]={0, 0};
+
+
+
+
+    u[0]=2.1458647;
+   		 u[1]=0;
+
+
+	/*apply velocity input*/
+	while(!triggered1){
+
+
+		 rbpush(&manip->dq0,-0.4);
+		 apply_velocity_input(htim1, htim2, u);
+		 PID_controller_velocity( manip, pid1, pid2, u ,0);
+
+		 update_speeds(manip);
+		 HAL_Delay((uint32_t) (T_C*1000));
+
+
+
+
+	}
+	 u[0]=2.1458647;
+	 u[1]=0;
+     rbpush(&manip->q0,u[0]);
+
+	while(triggered1 && limit_switch1==-1  ){
+
+
+
+		 rblast(&manip->q0_actual, &pos[0]);
+		 rblast(&manip->q1_actual,&pos[1]);
+
+
+		apply_position_input(htim1, htim2,  u, pos);
+		PID_controller_position( manip, pid1, pid2, u ,0);
+		 HAL_Delay((uint32_t) (T_C*1000));
+
+	}
+
+}
 
 
 

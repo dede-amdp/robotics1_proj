@@ -42,7 +42,7 @@ bytes:
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 3
 /* Debounce delay macro */
-#define DEBOUNCE_DELAY 50
+#define DEBOUNCE_DELAY 150
 /* Microstepping */
 #define MICROSTEPS 16
 /* THRESHOLD */
@@ -190,11 +190,14 @@ void pseudo_inv(float *M, float *trM, float *tempM, float *adjM, float *subM, fl
 void B_calc(man_t *manip);
 void C_calc(man_t *manip);
 void controller(man_t *manip, float *u);
+
+
 void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
 void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
 void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
 void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual,ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est);
 
+void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2,pid_controller_t *pid1,pid_controller_t *pid2);
 
 void init_rate(rate_t *rate, uint32_t ms);
 void rate_sleep(rate_t *rate);
