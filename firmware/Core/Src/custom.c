@@ -33,14 +33,18 @@ const uint8_t reduction2 = 5;
 
 ringbuffer_t timestamps;
 float disp1, disp2;
+float offset1=0.f;
+float offset2=0.f;
 float dq_actual0, dq_actual1;
 float ddq_actual0, ddq_actual1;
 uint32_t count = 0;
-int limit_switch1 = 1;
+int limit_switch1 = 0;
 int limit_switch2 = 1;
 float ui[2]= {0.0 , 0.0};
 
 float pos_prec[2]={0.f ,0.f};
+
+
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
@@ -126,11 +130,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
     if((now - previous_trigger1) > DEBOUNCE_DELAY ){
         if(!triggered1){
-          limit_switch1 *= -1;
-          /* Velocity and acceleration are set equal to zero*/
-          rbpush(&manip.dq0_actual, 0);
-          rbpush(&manip.ddq0_actual, 0);
-          rbpush(&manip.q0_actual, -2.1458647);  //set initial position
+          limit_switch1 = 1;
+          rblast(&manip.q0_actual,&offset1);
             // SECTION - DEBUG
           printf("triggered %d \n",count);
           fflush(stdout);
@@ -869,7 +870,7 @@ void read_encoders(man_t *manip){
         htim1->Instance->CNT = counter; /* correct cnt value */
     }
 
-    displacement1 = (float) (2*M_PI*counter/(htim1->Instance->ARR));
+    displacement1 = (float) (2*M_PI*counter/(htim1->Instance->ARR)-offset1);
 
     /* second encoder */
     counter = (htim2->Instance->CNT);
@@ -877,7 +878,7 @@ void read_encoders(man_t *manip){
         counter = (htim2->Instance->ARR-1) - (counter % 1<<16); /* handle underflow */
         htim2->Instance->CNT = counter;  /* correct cnt value */
     }
-    displacement2 = (float) (2*M_PI) - (2*M_PI*counter/(htim2->Instance->ARR)); /* the motor is upside down */
+    displacement2 = (float) (2*M_PI) - (2*M_PI*counter/(htim2->Instance->ARR)-offset2); /* the motor is upside down */
 
     // SECTION DEBUG
     // rbpush(&timestamps, (float) HAL_GetTick()/1000.0);
@@ -1199,7 +1200,7 @@ void setup_encoders(TIM_HandleTypeDef *htim){
 
 void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u , float setpoint){
 
-	float set_point1,set_point2,measure1, measure2;
+	float set_point1,set_point2,measure1, measure2,u0,u1,tc0,tc1;
 
 	rbpeek(&manip->q0,&set_point1);
 	rbpeek(&manip->q1,&set_point2);
@@ -1231,6 +1232,27 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 
 	*u=pid1->out;
 	*(u+1)=pid2->out;
+
+    if (ABS(u[0]-measure1)<0.01){
+    	tc0= 1000000;
+    }else{
+    tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/1.05);
+    }
+
+    if (ABS(u[1]- measure2)<0.01){
+        	tc1= 1000000;
+        }else{
+        tc1 = sqrt(2*M_PI*ABS(u[1]-measure2)/0.85);   //1.5 ----> come se fosse un jerk
+        }
+
+
+    u0=(u[0]-measure1)/tc0;
+    u1=(u[1]-measure2)/tc1;
+
+    *u=u0;
+    *(u+1)=u1;
+
+
 	//*(u)=0;
 
 
@@ -1256,7 +1278,7 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 	rblast(&manip->dq0_actual,&measure1);
 	rblast(&manip->dq1_actual,&measure2);
 
-	disp1=measure1;
+	rblast(&manip->q0_actual,&disp1);
 	disp2=measure2;
 
 	PID_update(pid1,set_point1, measure1,T_C);
@@ -1281,45 +1303,48 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 
     float u[2]={0, 0};
     float pos[2]={0, 0};
+    float pos_real[2]={-2.11350, 0};
 
-
-
-
-    u[0]=2.1458647;
-   		 u[1]=0;
-
+    offset1=0;
+    offset2=0;
 
 	/*apply velocity input*/
-	while(!triggered1){
+	while(!limit_switch1){
 
 
-		 rbpush(&manip->dq0,-0.4);
-		 apply_velocity_input(htim1, htim2, u);
-		 PID_controller_velocity( manip, pid1, pid2, u ,0);
+	 rbpush(&manip->dq0,-0.5);
+	 update_speeds(manip);
+	 PID_controller_velocity( manip, pid1, pid2, u ,0);
+	 apply_velocity_input(htim1, htim2, u);
 
-		 update_speeds(manip);
-		 HAL_Delay((uint32_t) (T_C*1000));
-
+	 HAL_Delay((uint32_t) (T_C*1000));
 
 
 
 	}
-	 u[0]=2.1458647;
-	 u[1]=0;
-     rbpush(&manip->q0,u[0]);
 
-	while(triggered1 && limit_switch1==-1  ){
+	limit_switch1=0;
 
+	u[0]=0;
+	u[1]=0;
+	apply_velocity_input(htim1, htim2, u);
 
+    offset1-=pos_real[0];
+    rblast(&manip->q0_actual,&pos[0]);
+    rblast(&manip->q1_actual,&pos[1]);
 
-		 rblast(&manip->q0_actual, &pos[0]);
-		 rblast(&manip->q1_actual,&pos[1]);
+	while(1){
 
+	if((ABS(pos[0])> 0.01) || (ABS(pos[1])> 0.01)){
 
-		apply_position_input(htim1, htim2,  u, pos);
 		PID_controller_position( manip, pid1, pid2, u ,0);
-		 HAL_Delay((uint32_t) (T_C*1000));
-
+		apply_velocity_input(htim1, htim2,  u);
+		rblast(&manip->q0_actual,&pos[0]);
+		rblast(&manip->q1_actual,&pos[1]);
+		HAL_Delay((uint32_t) (T_C*1000));
+	 }else{
+		 break;
+	 }
 	}
 
 }
