@@ -176,6 +176,7 @@ extern float pos_prec[2];
 
 extern int limit_switch;
 extern uint8_t homing_triggered;
+extern uint8_t log_triggered;
 
 
 // !SECTION DEBUG

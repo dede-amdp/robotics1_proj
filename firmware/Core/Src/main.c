@@ -165,7 +165,10 @@ int main(void)
 
     update_speeds(&manip);
     /* log data */
-    log_data(&huart2, &manip);
+    if(log_triggered){
+      log_data(&huart2, &manip);
+      log_triggered = 0;
+    }
     //controller(&manip, v); /* apply the control law to find the input */
     /* apply the inputs to the motors */
 

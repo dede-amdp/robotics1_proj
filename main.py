@@ -168,6 +168,7 @@ def py_get_data():
 
     # local method to interpret the message read on the serial com
     def read_position() -> list[float]:
+        scm.write_serial('POS:'+('0'*18+':')*6+'0\n')
         string: str = str(scm.read_serial()) # the msg structure: "0x00000000:0x00000000" => "(hex) q0:(hex) q1"
         print(string)
         string=string.replace("b",'',1).replace("'",'').replace("\\n",'')
@@ -248,7 +249,6 @@ def py_log_data():
 @eel.expose
 def py_homing_cmd():
     # send the homing command 
-   
     scm.write_serial('HOM:'+('0'*18+':')*6+'0\n')
 
 

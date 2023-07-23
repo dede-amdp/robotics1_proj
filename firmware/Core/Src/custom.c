@@ -47,6 +47,7 @@ float pos_prec[2]={0.f ,0.f};
 uint8_t is_home1=0;
 uint8_t is_home2=0;
 uint8_t homing_triggered=0;
+uint8_t log_triggered = 0;
 
 
 
@@ -113,6 +114,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
 
 
+    }else if(!strcmp(cmd, "POS")){
+        log_triggered = 1;
     }else{ /* default case */
 
     }
