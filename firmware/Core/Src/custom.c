@@ -11,7 +11,7 @@
 #include "pid_controller.h"
 
 uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
-uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
+uint8_t tx_data[22]; /* where the message will be saved for transmission */
 man_t manip;
 
 pid_controller_t pid_pos1, pid_pos2, pid_vel1, pid_vel2;
@@ -44,6 +44,10 @@ float ui[2]= {0.0 , 0.0};
 
 float pos_prec[2]={0.f ,0.f};
 
+uint8_t is_home1=0;
+uint8_t is_home2=0;
+uint8_t homing_triggered=0;
+
 
 
 
@@ -75,6 +79,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
    // printf("%s %d \n",cmd,!strcmp(cmd, "TRJ"));
     //fflush(stdout);
 
+    printf(cmd);
+    printf("wry \n");
+    printf("%d \n",!strcmp(cmd, "HOM"));
+    fflush(stdout);
+
     if(!strcmp(cmd, "TRJ")){
     	   count++;
 
@@ -95,6 +104,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
             i++;
         }
         rbpush(&manip.penup, (float) atoi(data));
+    }else if(!strcmp(cmd, "HOM")){
+
+    	printf(rx_data);
+    	    fflush(stdout);
+
+    homing_triggered=1;
+
+
+
     }else{ /* default case */
 
     }
@@ -128,19 +146,46 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     uint32_t now;
     now = HAL_GetTick();
 
+
     if((now - previous_trigger1) > DEBOUNCE_DELAY ){
-        if(!triggered1){
+       if (GPIO_Pin==LIMIT_SWITCH_1_Pin){
+    	if(!triggered1){
           limit_switch1 = 1;
+          if(is_home1){
           rblast(&manip.q0_actual,&offset1);
+          }
             // SECTION - DEBUG
-          printf("triggered %d \n",count);
-          fflush(stdout);
+          printf("trigger1 \n");
+         		 fflush(stdout);
             HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
             // !SECTION - DEBUG
         }
         triggered1 = 1-triggered1;
         previous_trigger1 = now;
-    }
+       }
+}
+
+ if((now - previous_trigger2) > DEBOUNCE_DELAY ){
+    if(GPIO_Pin==LIMIT_SWITCH_2_Pin){
+        if(!triggered2){
+            limit_switch2 = 1;
+            if(is_home2){
+            rblast(&manip.q1_actual,&offset2);
+		 }
+		   // SECTION - DEBUG
+		 printf("trigger2 \n");
+		 fflush(stdout);
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		   // !SECTION - DEBUG
+	   }
+	   triggered2 = 1-triggered2;
+	   previous_trigger2 = now;
+
+       }
+
+  }
+
+    
 }
 
 
@@ -196,7 +241,7 @@ int _write(int file,char *ptr, int len){
 - void;
 @#
 */
-void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2){
+void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3,TIM_HandleTypeDef *htim4){
     uint8_t i;
     // initialize all the ring buffers
     for(i = 0; i < 14; i++){
@@ -209,6 +254,8 @@ void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2){
     }
     manip->htim_encoder1 = htim1;
     manip->htim_encoder2 = htim2;
+    manip->htim_motor1 = htim3;
+    manip->htim_motor2 = htim4;
 }
 
 /*
@@ -878,8 +925,8 @@ void read_encoders(man_t *manip){
         counter = (htim2->Instance->ARR-1) - (counter % 1<<16); /* handle underflow */
         htim2->Instance->CNT = counter;  /* correct cnt value */
     }
-    displacement2 = (float) (2*M_PI) - (2*M_PI*counter/(htim2->Instance->ARR)-offset2); /* the motor is upside down */
-
+    displacement2 = (float) ((2*M_PI) - (2*M_PI*counter/(htim2->Instance->ARR))); /* the motor is upside down */
+    displacement2-=offset2;
     // SECTION DEBUG
     // rbpush(&timestamps, (float) HAL_GetTick()/1000.0);
     // !SECTION DEBUG
@@ -1162,7 +1209,8 @@ void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleT
 }
 
 void log_data(UART_HandleTypeDef *huart, man_t *manip){
-    unsigned long long int encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
+    //unsigned  int encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
+	uint32_t encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
     uint32_t timestamp;
     uint8_t i;
     // SECTION DEBUG
@@ -1180,8 +1228,11 @@ void log_data(UART_HandleTypeDef *huart, man_t *manip){
     rbpeek(&manip->q1, &q);
     memcpy(&encoding_q1_d, &q, sizeof q);
     timestamp = HAL_GetTick();
-    sprintf(tx_data, "%X:%X:%X:%X:%X\n", (unsigned long long int) timestamp, encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d); /*Timestamp:q0:q1*/
-    HAL_UART_Transmit_DMA(huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for logging purposes */
+    //sprintf(tx_data, "%X:%X:%X:%X:%X\n", (unsigned long long int) timestamp, encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d); /*Timestamp:q0:q1*/
+    sprintf(tx_data, "0x%08x:0x%08x\n", encoding_q0  , encoding_q1);
+    printf("%s \n",tx_data);
+    fflush(stdout);
+    HAL_UART_Transmit_DMA(huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for    purposes */
 }
 
 
@@ -1219,8 +1270,6 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	disp2=measure2;
 
 
-
-
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
 
@@ -1238,7 +1287,8 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     }else{
     tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/1.05);
     }
-
+   // printf("%f \n", fabs(u[1]- measure2));
+    fflush(stdout);
     if (ABS(u[1]- measure2)<0.01){
         	tc1= 1000000;
         }else{
@@ -1279,7 +1329,8 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 	rblast(&manip->dq1_actual,&measure2);
 
 	rblast(&manip->q0_actual,&disp1);
-	disp2=measure2;
+	rblast(&manip->q1_actual,&disp2);
+
 
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
@@ -1288,7 +1339,7 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 	ddq_actual1=pid2->out;
 
 
-	printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
+	//printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
 
 	*u=pid1->out;
 	*(u+1)=pid2->out;
@@ -1303,16 +1354,22 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 
     float u[2]={0, 0};
     float pos[2]={0, 0};
-    float pos_real[2]={-2.11350, 0};
+    float pos_real[2]={-2.11350, 2.35053 };
+
+    is_home1=1;
+    is_home2=1;
+
+    limit_switch1=0;
+    limit_switch2=0;
 
     offset1=0;
     offset2=0;
 
 	/*apply velocity input*/
-	while(!limit_switch1){
+	while(!limit_switch1 ){
 
+	rbpush(&manip->dq0,-0.6);
 
-	 rbpush(&manip->dq0,-0.6);
 	 update_speeds(manip);
 	 PID_controller_velocity( manip, pid1, pid2, u ,0);
 	 apply_velocity_input(htim1, htim2, u);
@@ -1320,16 +1377,43 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 	 HAL_Delay((uint32_t) (T_C*1000));
 
 
-
 	}
 
+
+
+	u[0]=0;
+	u[1]=0;
+	apply_velocity_input(htim1, htim2, u);
+
+	while(!limit_switch2 ){
+
+
+	rbpush(&manip->dq0,0);
+    rbpush(&manip->dq1,0.3);
+
+		 update_speeds(manip);
+		 PID_controller_velocity( manip, pid1, pid2, u ,0);
+		 apply_velocity_input(htim1, htim2, u);
+
+		 HAL_Delay((uint32_t) (T_C*1000));
+
+
+		}
+
+
+
+	printf(" primo while \n");
+	fflush(stdout);
+
 	limit_switch1=0;
+	limit_switch2=0;
 
 	u[0]=0;
 	u[1]=0;
 	apply_velocity_input(htim1, htim2, u);
 
     offset1-=pos_real[0];
+    offset2-=pos_real[1];
     rblast(&manip->q0_actual,&pos[0]);
     rblast(&manip->q1_actual,&pos[1]);
 
@@ -1342,11 +1426,26 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 		rblast(&manip->q0_actual,&pos[0]);
 		rblast(&manip->q1_actual,&pos[1]);
 		HAL_Delay((uint32_t) (T_C*1000));
-	 }else{
+	 }
+
+	else{
 		 break;
 	 }
 	}
 
+
+
+	u[0]=0;
+	u[1]=0;
+	apply_velocity_input(htim1, htim2, u);
+
+	is_home1=0;
+	is_home2=0;
+
+	limit_switch1=0;
+	limit_switch2=0;
+	printf("  end homing \n");
+	fflush(stdout);
 }
 
 

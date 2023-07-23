@@ -124,7 +124,7 @@ def send_data(msg_type: str, **data):
                             f":{int(data['q'][2][i])}\n"
 
                 scm.write_serial(msg_str) # send data through the serial com
-                print(msg_str)
+                #print(msg_str)
 
                 '''
                 pos = tpy.dk([data['q'][0][i], data['q'][1][i]], sizes)
@@ -168,7 +168,9 @@ def py_get_data():
 
     # local method to interpret the message read on the serial com
     def read_position() -> list[float]:
-        string: str = scm.read_serial() # the msg structure: "0x00000000:0x00000000" => "(hex) q0:(hex) q1"
+        string: str = str(scm.read_serial()) # the msg structure: "0x00000000:0x00000000" => "(hex) q0:(hex) q1"
+        print(string)
+        string=string.replace("b",'',1).replace("'",'').replace("\\n",'')
         values: list[str] = string.replace('0x', '').split(":")
         q = [h2d(values[0]), h2d(values[1])]
         points = tpy.dk(np.array(q), sizes)
@@ -182,7 +184,7 @@ def py_get_data():
         current_q = read_position()
         print(current_q)
         data = [{'type':'line', 'points':[current_q, data[0]['points'][0]], 'data':{'penup':True}}] + data
-        print(data[0], data[1])
+        
         # data contains the trajectory patches to stitch together
         # trajectory = {'type', 'points', 'data'}
         # example:
@@ -246,7 +248,9 @@ def py_log_data():
 @eel.expose
 def py_homing_cmd():
     # send the homing command 
-    scm.write_serial('HOM:'+('0'*18+':')*6+'0')
+   
+    scm.write_serial('HOM:'+('0'*18+':')*6+'0\n')
+
 
 
 @eel.expose

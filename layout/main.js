@@ -34,7 +34,7 @@ serial_com_btn.addEventListener('click', handle_serial);
 line_btn.addEventListener('click', () => {tool = line_tool;});
 circle_btn.addEventListener('click', () => {tool = circle_tool;});
 penup_btn.addEventListener('click', () => {penup = !penup;})
-homing_btn.addEventListener('click', eel.py_homing_cmd);
+homing_btn.addEventListener('click',()=>{eel.py_homing_cmd()()} );
 
 // get continuous updates on mouse position
 input_canvas.addEventListener('mousemove', (e) => {

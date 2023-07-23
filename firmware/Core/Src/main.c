@@ -89,6 +89,7 @@ int main(void)
   float i = 1*T_C;
   float pos[2];
   float setpoint;
+
   //uint32_t steps0, steps1;
   //int8_t dir0, dir1;
   /* USER CODE END 1 */
@@ -119,7 +120,7 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
-  init_man(&manip, &htim3, &htim4); /* initialize the manipulator struct */
+  init_man(&manip, &htim3, &htim4,&htim2,&htim5); /* initialize the manipulator struct */
 
   /* PID controllers*/
 
@@ -148,68 +149,44 @@ int main(void)
   /* start timers */
   start_timers(&htim3, &htim4, &htim2, &htim5);
   setup_encoders(&htim10);
-  homing(&manip, &htim2, &htim5, &pid_vel1, &pid_vel2)  ;
+  //homing(&manip, &htim2, &htim5, &pid_vel1, &pid_vel2);
 
   while (1)
   {
 
 
-    // read_encoders(&htim3, &htim4, &manip);
+
+  if (homing_triggered){
+	  homing(&manip, manip.htim_motor1, manip.htim_motor2, &pid_vel1, &pid_vel2);
+	  homing_triggered=0;
+  }
+
+
+
     update_speeds(&manip);
     /* log data */
-    //log_data(&huart2, &manip);
+    log_data(&huart2, &manip);
     //controller(&manip, v); /* apply the control law to find the input */
     /* apply the inputs to the motors */
 
 
-   //debug
-    //if(count< 100 ){
-
-    	//setpoint= 0.5;
 
 
-    //}else{
-    	setpoint=0;
-    //}
-    // ! debug NB ricorda di togliere il setpoint dal valore passato a pid e prenderlo direttamente da manip
+    setpoint=0;
+   // ! debug NB ricorda di togliere il setpoint dal valore passato a pid e prenderlo direttamente da manip
 
      PID_controller_position( &manip, &pid_pos1, &pid_pos2, v ,setpoint);
 
 
-   // v[0]=0;
-   // v[1]=setpoint;
 
-
-
-    //ddq_actual0 = v[0];
-    //ddq_actual1= v[1];
-    //rblast(&manip.dq0_actual,&dq_actual0);
-    //rblast(&manip.dq1_actual,&dq_actual1);
-
-    //rbpeek(&manip.dq0,&ddq_actual0);
-    //rbpeek(&manip.dq1,&ddq_actual1);
-
-    // SECTION DEBUG
-    // v[0] = 0;
-    // v[1] = 2;
-    // *((float *) tx_data) = v[0];
-    // *((float *) tx_data+1) = v[1];
-    // tx_data[16] = '\n';
-    // HAL_UART_Transmit_DMA(&huart2, &tx_data, 17);
-    // !SECTION DEBUG
 
     rblast(&manip.q0_actual,&pos[0]);
     rblast(&manip.q1_actual,&pos[1]);
 
-    apply_position_input(&htim2, &htim5, v, pos);
+    apply_velocity_input(&htim2, &htim5, v, pos);
 
-    //rblast(&manip.dq0_actual,&dq_actual0);
-    //rblast(&manip.dq1_actual,&dq_actual1);
 
-    //printf("%d ;%f ; %f \n",count ,setpoint, dq_actual1 );
-    //fflush(stdout);
-    //disp1=HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_15);
-    //disp2=HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

@@ -32,7 +32,7 @@ def write_serial(msg:str) -> bool:
     global ser
     if ser is None: return False
     if len(msg) == 0:
-        msg = "EMPTY\n";
+        msg = "EMPTY\n"
     #if msg[-1] != "\n":
     #    msg = msg + "\n"
     ser.write(bytes(msg,'utf-8'))          # write a string
@@ -44,8 +44,11 @@ def read_serial() -> bytes:
     if ser is None: return None
     line = 'NO MSG'
     ser.flush()
-    line = ser.readline()
+    #line = ser.readline()
+
+    line = ser.read(42)
     # line = str(line) # wait until \n -> blocking call
+    ser.flush()
     return line
 
 def serial_close():

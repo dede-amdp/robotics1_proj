@@ -42,7 +42,7 @@ bytes:
 /* Number of previous values to use for speed and acceleration estimation */
 #define ESTIMATION_STEPS 3
 /* Debounce delay macro */
-#define DEBOUNCE_DELAY 150
+#define DEBOUNCE_DELAY 100
 /* Microstepping */
 #define MICROSTEPS 16
 /* THRESHOLD */
@@ -55,7 +55,7 @@ bytes:
 #define SIGN(A) (int8_t) ((A >= 0) - (A <= 0))
 
 /* ABS macro */
-#define ABS(A) (SIGN(A)*A)
+#define ABS(A) (float) fabs(A)
 
 /* CONTROLLER PARAMETER */
 
@@ -136,6 +136,8 @@ typedef struct manipulator {
     float C[4];
     TIM_HandleTypeDef *htim_encoder1;
     TIM_HandleTypeDef *htim_encoder2;
+    TIM_HandleTypeDef *htim_motor1;
+    TIM_HandleTypeDef *htim_motor2;
 } man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
 
 typedef struct rate {
@@ -144,7 +146,7 @@ typedef struct rate {
 } rate_t;
 
 extern uint8_t rx_data[DATA_SZ]; /* where the message will be saved for reception */
-extern uint8_t tx_data[DATA_SZ]; /* where the message will be saved for transmission */
+extern uint8_t tx_data[22]; /* where the message will be saved for transmission */
 extern man_t manip;
 
 
@@ -173,10 +175,12 @@ extern float pos_prec[2];
 
 
 extern int limit_switch;
+extern uint8_t homing_triggered;
+
 
 // !SECTION DEBUG
 
-void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2);
+void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 uint8_t dot(float *A, uint8_t nA, uint8_t mA, float* B, uint8_t nB, uint8_t mB, float* C);
 void sum(float *A, float *B, uint8_t n, float *C);
 void diff(float *A, float *B, uint8_t n, float *C);
