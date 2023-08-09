@@ -341,12 +341,15 @@ def compose_cycloidal(q:list[float], ddqm:float = 1.05) -> list[tuple[list[funct
 @outputs: 
 - ndarray: column numpy array containing the values of the joint coordinates.
 @# """
-def ik(x:float, y:float, z:float = 0, theta:float = None, sizes:dict[float] = {'l1':0.25,'l2':0.25}) -> np.ndarray:
+def ik(x:float, y:float, z:float = 0, theta:float = None, sizes:dict[float] = {'l1':0.170 ,'l2':0.158}) -> np.ndarray:
     if x**2+y**2 > (sizes['l1']+sizes['l2'])**2: return None
     q1 = 0
     q2 = 0
     a1 = sizes['l1']
     a2 = sizes['l2']
+    print ("a1 :"+str(a1) +" a2 :"+str (a2))
+    print ("x :"+str(x) +" y:"+str (y))
+
 
     if theta is not None:
         cos_q2 = (x**2+y**2-sizes['l1']**2-sizes['l2']**2)/(2*sizes['l1']*sizes['l2'])
@@ -356,6 +359,7 @@ def ik(x:float, y:float, z:float = 0, theta:float = None, sizes:dict[float] = {'
     else:
         q2 = acos((x**2+y**2-a1**2-a2**2)/(2*a1*a2))
         q1 = atan2(y,x)-atan2(a2*sin(q2), a1+a2*cos(q2))
+
 
     q = np.array([[q1,q2,z]]).T
     return q
@@ -370,7 +374,7 @@ def ik(x:float, y:float, z:float = 0, theta:float = None, sizes:dict[float] = {'
 @outputs: 
 - ndarray: column numpy array containing the values of the coordinates of the end effector (x, y and the rotation angle theta).
 @# """
-def dk(q:np.ndarray, sizes:dict[float] = {'l1':0.25,'l2':0.25})->np.ndarray:
+def dk(q:np.ndarray, sizes:dict[float] = {'l1':0.170,'l2':0.158})->np.ndarray:
     x = sizes['l1']*cos(q[0])+sizes['l2']*cos(q[0]+q[1])
     y = sizes['l1']*sin(q[0])+sizes['l2']*sin(q[0]+q[1])
     theta = q[0]+q[1]

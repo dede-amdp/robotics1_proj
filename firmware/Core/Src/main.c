@@ -90,8 +90,7 @@ int main(void)
   float pos[2];
   float setpoint;
 
-  //uint32_t steps0, steps1;
-  //int8_t dir0, dir1;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -157,8 +156,11 @@ int main(void)
 
 
   if (homing_triggered){
-	  homing(&manip, manip.htim_motor1, manip.htim_motor2, &pid_vel1, &pid_vel2);
+	  //is_home1=1;
+	  //is_home2=1;
+	  homing(&manip, manip.htim_motor1, manip.htim_motor2, &pid_vel1, &pid_vel2,&pid_pos1,&pid_pos2);
 	  homing_triggered=0;
+
   }
 
 
@@ -167,6 +169,8 @@ int main(void)
     /* log data */
     if(log_triggered){
       log_data(&huart2, &manip);
+      printf("logData");
+      fflush(stdout);
       log_triggered = 0;
     }
     //controller(&manip, v); /* apply the control law to find the input */

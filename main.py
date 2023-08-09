@@ -1,9 +1,9 @@
 import eel # GUI
-
+import math
 import matplotlib.pyplot as plt # needed for plotting
 import numpy as np # arrays
 from time import sleep as tsleep
-from math import cos, sin, tan
+from math import cos, sin, tan, pi
 from struct import pack, unpack
 from binascii import unhexlify
 
@@ -19,15 +19,15 @@ import traceback
 settings = {
     'Tc' : 0.01, # s
     'data_rate': 1/100, # rate at which msgs are sent
-    'max_acc' : 0.05,#1.05, #1.05, # rad/s**2
+    'max_acc' : 0.1,#1.05, #1.05, # rad/s**2
     'ser_started': False,
     'line_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t), # timing laws for line and circle segments
     'circle_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t) # lambda t, tf: t/tf
 }
 
 sizes = {
-    'l1': 0.25,
-    'l2': 0.25
+    'l1': 0.170,
+    'l2': 0.158
 }
 
 log_data = {
@@ -168,12 +168,17 @@ def py_get_data():
 
     # local method to interpret the message read on the serial com
     def read_position() -> list[float]:
-        scm.write_serial('POS:'+('0'*18+':')*6+'0\n')
-        string: str = str(scm.read_serial()) # the msg structure: "0x00000000:0x00000000" => "(hex) q0:(hex) q1"
+        scm.ser.reset_input_buffer()
+        scm.ser.reset_output_buffer()
+        
+        #scm.write_serial('POS:'+('0'*18+':')*6+'0\n')
+        
+        #string: str = str(scm.read_serial()) # the msg structure: "0x00000000:0x00000000" => "(hex) q0:(hex) q1"
         print(string)
         string=string.replace("b",'',1).replace("'",'').replace("\\n",'')
         values: list[str] = string.replace('0x', '').split(":")
-        q = [h2d(values[0]), h2d(values[1])]
+        #q = [h2d(values[0]), h2d(values[1])]
+        q=(0,0)
         points = tpy.dk(np.array(q), sizes)
         return [points[0,0], points[1,0]]
 
@@ -182,9 +187,13 @@ def py_get_data():
         # add an initial patch to move the manipulator to the correct starting position
         if len(data) < 1: 
             raise Exception("Not Enough Points to build a Trajectory")
-        current_q = read_position()
+        #current_q = [0.0,math.pi/2]  #before 0,0
+        q=(0,0)
+        points = tpy.dk(np.array(q), sizes)
+        current_q = [points[0,0], points[1,0]]
+        
         print(current_q)
-        data = [{'type':'line', 'points':[current_q, data[0]['points'][0]], 'data':{'penup':True}}] + data
+        data = [{'type':'line', 'points':[current_q, data[0]['points'][0]], 'data':{'penup':True}}] + data[::-1]
         
         # data contains the trajectory patches to stitch together
         # trajectory = {'type', 'points', 'data'}

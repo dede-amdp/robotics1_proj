@@ -44,11 +44,16 @@ def read_serial() -> bytes:
     if ser is None: return None
     line = 'NO MSG'
     ser.flush()
-    #line = ser.readline()
-
-    line = ser.read(42)
+    line = ser.readline()
+    #line=ser.read(22)
+    print(ser.read_all())
+    # line=ser.readline()
     # line = str(line) # wait until \n -> blocking call
-    ser.flush()
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
+    
+    print(ser.read_all())
+
     return line
 
 def serial_close():

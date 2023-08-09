@@ -80,10 +80,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
    // printf("%s %d \n",cmd,!strcmp(cmd, "TRJ"));
     //fflush(stdout);
 
-    printf(cmd);
-    printf("wry \n");
-    printf("%d \n",!strcmp(cmd, "HOM"));
-    fflush(stdout);
+    //printf(cmd);
+    // printf("wry \n");
+    //printf("%d \n",!strcmp(cmd, "HOM"));
+    //fflush(stdout);
 
     if(!strcmp(cmd, "TRJ")){
     	   count++;
@@ -156,9 +156,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
           limit_switch1 = 1;
           if(is_home1){
           rblast(&manip.q0_actual,&offset1);
+          printf("CNT1: %x \n",manip.htim_encoder1->Instance->CNT);
+         fflush(stdout);
+          //offset1=2*M_PI-offset1;
+
+          is_home1=0;
           }
             // SECTION - DEBUG
-          printf("trigger1 \n");
+          printf("trigger1 offset1: %f \n",offset1);
          		 fflush(stdout);
             HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
             // !SECTION - DEBUG
@@ -166,7 +171,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
         triggered1 = 1-triggered1;
         previous_trigger1 = now;
        }
-}
+     }
 
  if((now - previous_trigger2) > DEBOUNCE_DELAY ){
     if(GPIO_Pin==LIMIT_SWITCH_2_Pin){
@@ -174,9 +179,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
             limit_switch2 = 1;
             if(is_home2){
             rblast(&manip.q1_actual,&offset2);
+            printf("CNT2: %x \n",manip.htim_encoder2->Instance->CNT);
+            fflush(stdout);
+
+            is_home2=0;
 		 }
 		   // SECTION - DEBUG
-		 printf("trigger2 \n");
+		 printf("trigger2 offset2: %f \n",offset2);
+
 		 fflush(stdout);
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		   // !SECTION - DEBUG
@@ -784,23 +794,7 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffe
     float invM[ESTIMATION_STEPS*ESTIMATION_STEPS], dotM[ESTIMATION_STEPS*ESTIMATION_STEPS];
     uint8_t i;
 
-    /*
-    float a[4];
-	rbget(q_actual, 0, &a[0]);
-	rbget(q_actual, 1, &a[1]);
-	rbget(dq_actual, 0, &a[2]);
-	rbget(dq_actual, 1, &a[3]);
-	uint8_t index1 = (q_actual->head) + (q_actual->length) - 1;
-	uint8_t index2 = (dq_actual->head) + (dq_actual->length) - 1;
-	a[0] = q_actual->buffer[index1%RBUF_SZ];
-	a[1] = q_actual->buffer[(index1-1+RBUF_SZ)%RBUF_SZ];
-	a[2] = dq_actual->buffer[index2%RBUF_SZ];
-	a[3] = dq_actual->buffer[(index2-1+RBUF_SZ)%RBUF_SZ];
-	// if not enough data is available, apply simple estimation
-	*v_est = ((a[1]-a[0])/T_S);
-	*a_est = (a[3]-a[2])/T_S;
-    return;
-    */
+
 
     float prev, succ, vel,acc, a, b;
     succ=0;
@@ -815,28 +809,16 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffe
     }
     prev /=5;
     succ /=5;
-    /*
-    //*v_est = (succ-prev)/(T_C*5);
-    rbget(q_actual,RBUF_SZ-1, &succ);
-    rbget(q_actual,RBUF_SZ-2, &prev);
-	*v_est=(succ-prev)/T_S;
 
-    rbget(dq_actual, RBUF_SZ-1, &succ);
-    rbget(dq_actual, RBUF_SZ-2, &prev);
-    *a_est = (succ-prev)/T_S;
 
     /* filtering velocity with a first order filter  */
 
-
-
-
-    //rbget(q_actual,RBUF_SZ-1, &pos_succ);
-    //rbget(q_actual,RBUF_SZ-2, &pos_prev);
     rblast(dq_actual,&vel);
 
 
     *v_est=0.8546*vel+((1-0.8546)*(succ-prev)/(T_C*5) );
 
+    /* filtering accelleration  with a first order filter  */
 
     rbget(dq_actual, RBUF_SZ-1, &succ);
     rbget(dq_actual, RBUF_SZ-2, &prev);
@@ -928,11 +910,13 @@ void read_encoders(man_t *manip){
         counter = (htim2->Instance->ARR-1) - (counter % 1<<16); /* handle underflow */
         htim2->Instance->CNT = counter;  /* correct cnt value */
     }
-    displacement2 = (float) ((2*M_PI) - (2*M_PI*counter/(htim2->Instance->ARR))); /* the motor is upside down */
+    displacement2 = (float) ((2*M_PI) -  (2*M_PI*counter/(htim2->Instance->ARR))); /* the motor is upside down */
+
+   //displacement2 = (float) (2*M_PI*counter/(htim2->Instance->ARR)-offset2);
     displacement2-=offset2;
-    // SECTION DEBUG
-    // rbpush(&timestamps, (float) HAL_GetTick()/1000.0);
-    // !SECTION DEBUG
+
+
+
 
     if(displacement1 > 2*M_PI){
     	displacement1 = 2*M_PI; /* clamping */
@@ -940,13 +924,22 @@ void read_encoders(man_t *manip){
 	if(displacement2 > 2*M_PI){
 		displacement2 = 2*M_PI; /* clamping */
 	}
-    if(displacement1 > M_PI){
-    	displacement1 = displacement1 - (2*M_PI); /* redefining the domain between -PI and +PI */
-    }
-    if(displacement2 > M_PI){
-    	displacement2 = displacement2 - (2*M_PI); /* redefining the domain between -PI and +PI */
-    }
+	if(!is_home1 && !is_home2){
+		if(displacement1 < -M_PI){
+				displacement1 = 2*M_PI+displacement1; // clamping
+		}
 
+		if(displacement2 < -M_PI){
+			displacement2 = 2*M_PI+displacement2; //clamping
+		}
+
+		if(displacement1 > M_PI){
+			displacement1 = displacement1 - (2*M_PI); // redefining the domain between -PI and +PI
+		}
+		if(displacement2 > M_PI){
+			displacement2 = displacement2 - (2*M_PI); // redefining the domain between -PI and +PI
+		}
+	}
     // SECTION DEBUG
     // disp1 = displacement1;
     // disp2 = displacement2;
@@ -991,39 +984,18 @@ void read_encoders(man_t *manip){
     rbpush(&manip->ddq1_actual, a_est);
     */
 
-    // SECTION DEBUG
-	/*
-	return;
-    float delta_t, delta_q, delta_dq, t1, t2, q1, q2, dq1, dq2;
-    rbget(&timestamps, timestamps.length-1, &t2);
-    rbget(&timestamps, timestamps.length-2, &t1);
-    rbget(&manip->q0_actual, manip->q0_actual.length-1, &q2);
-    rbget(&manip->q0_actual, manip->q0_actual.length-2, &q1);
-    rbget(&manip->dq0_actual, manip->dq0_actual.length-1, &dq2);
-    rbget(&manip->dq0_actual, manip->dq0_actual.length-2, &dq1);
-    delta_t = (t2-t1) == 0 ? t2-0 : t2-t1;
-    delta_q = q2-q1;
-    delta_dq = dq2-dq1;
-    v_est = delta_q/delta_t;
-    a_est = delta_dq/delta_t;
 
-    rbpush(&manip->dq0_actual, v_est);
-    rbpush(&manip->ddq0_actual, a_est);
-
-	rbget(&manip->q1_actual, manip->q1_actual.length-1, &q2);
-	rbget(&manip->q1_actual, manip->q1_actual.length-2, &q1);
-	rbget(&manip->dq1_actual, manip->dq1_actual.length-1, &dq2);
-	rbget(&manip->dq1_actual, manip->dq1_actual.length-2, &dq1);
-	delta_q = q2-q1;
-	delta_dq = dq2-dq1;
-	v_est = delta_q/delta_t;
-	a_est = delta_dq/delta_t;
-
-	rbpush(&manip->dq1_actual, v_est);
-	rbpush(&manip->ddq1_actual, a_est);
-    // !SECTION DEBUG
-	*/
 }
+
+/*
+#@
+@name: update_speeds
+@brief: update the estimated speed data from both the encoders of the 2Dofs planar manipulator
+@inputs:
+- man_t *manip: pointer to the manipulator struct that holds both the desired and actual motor positions, speeds and accelerations;
+@outputs: outputs
+@#
+*/
 
 void update_speeds(man_t *manip){
 	float v_est, a_est;
@@ -1052,11 +1024,13 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
    HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
 
    dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+   //dir2 = u[1] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+
    // dir2 = 1; // DEBUG
    HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
 
 
-	prescaler1= (uint16_t)  8400;//12000 ;//8400;
+	prescaler1= (uint16_t)  5200;// 8400;//12000 ;//8400;
 	f=HAL_RCC_GetPCLK1Freq()*2;
 	ARR= ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
 	CCR= ARR /2;
@@ -1104,13 +1078,13 @@ void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
     if (ABS(u[0]-pos[0])<0.01){
     	tc0= 1000000;
     }else{
-    tc0 = sqrt(2*M_PI*ABS(u[0]-pos[0])/1.05);
+    tc0 = sqrt(2*M_PI*ABS(u[0]-pos[0])/0.3);//0.75
     }
 
     if (ABS(u[1]-pos[1])<0.01){
         	tc1= 1000000;
         }else{
-        tc1 = sqrt(2*M_PI*ABS(u[1]-pos[1])/0.85);   //1.5 ----> come se fosse un jerk
+        tc1 = sqrt(2*M_PI*ABS(u[1]-pos[1])/1.5);   //1.5 ----> come se fosse un jerk
         }
 
 
@@ -1151,42 +1125,22 @@ void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
 
 
 
-    return
-
-    dir1 = u[0] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
-    // dir1 = 1; // DEBUG
-    HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
-
-    dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
-    // dir2 = 1; // DEBUG
-    HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
-
-
-    prescaler1= (uint16_t)  8400;//12000 ;//8400;
-    f=HAL_RCC_GetPCLK1Freq()*2;
-    ARR= ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
-    CCR= ARR /2;
-    __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
-   	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
-	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
-	htim1->Instance->EGR = TIM_EGR_UG;
-
-	prescaler2= (uint16_t)  8400;//12000 ;//8400;
-	f=HAL_RCC_GetPCLK1Freq()*2;
-	ARR=  ABS(u[1]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
-	CCR= ARR /2;
-	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);//2625
-	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
-	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
-	htim2->Instance->EGR = TIM_EGR_UG;
-
     return;
-
-
 
 }
 
-
+/*
+#@
+@name: start_timers
+@brief: starts all the timers needed for the control
+@inputs:
+- TIM_HandleTypeDef *htim1
+- TIM_HandleTypeDef *htim2
+- TIM_HandleTypeDef *htim3
+- TIM_HandleTypeDef *htim4
+@outputs: void
+@#
+*/
 
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
     HAL_TIM_Base_Start_IT(htim1);
@@ -1202,7 +1156,18 @@ void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_Handle
         HardFault_Handler();
     }
 }
-
+/*
+#@
+@name: stop_timers
+@brief: stops all the timers needed for the control
+@inputs:
+- TIM_HandleTypeDef *htim1
+- TIM_HandleTypeDef *htim2
+- TIM_HandleTypeDef *htim3
+- TIM_HandleTypeDef *htim4
+@outputs: void
+@#
+*/
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
     HAL_TIM_Base_Stop_IT(htim1);
     HAL_TIM_Base_Stop_IT(htim2);
@@ -1211,6 +1176,17 @@ void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleT
     HAL_TIM_Base_Stop_IT(htim4);
 }
 
+
+/*
+#@
+@name: log_data
+@brief: Send all the manipulator data on the serial connection with a message
+@inputs:
+- UART_HandleTypeDef *huart
+- man_t *manip
+@outputs: void
+@#
+*/
 void log_data(UART_HandleTypeDef *huart, man_t *manip){
     //unsigned  int encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
 	uint32_t encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
@@ -1237,7 +1213,15 @@ void log_data(UART_HandleTypeDef *huart, man_t *manip){
     fflush(stdout);
     HAL_UART_Transmit_DMA(huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for    purposes */
 }
-
+/*
+#@
+@name:setup_encoders
+@brief: performs the necessary operations for the setup of the encoders
+@inputs:
+- TIM_HandleTypeDef *htim
+@outputs: void
+@#
+*/
 
 void setup_encoders(TIM_HandleTypeDef *htim){
 	const uint32_t clock_freq = 84000000;
@@ -1249,9 +1233,25 @@ void setup_encoders(TIM_HandleTypeDef *htim){
 	HAL_TIM_Base_Start_IT(htim); /* start the sampling timer */
 }
 
+/*
+#@
+@name: PID_controller_velocity
+@brief: Calculate the position control  output for the links.
+@note:The motor driver (DRV8825) take a STEP/DIR input, that represent a velocity command.
+For accomplish the translation from position input to velocity input, first of all we read the current position,after that ,
+we calculate the distance between the setpoint  position and the current position, than we calculate the needed time for motion using the cycloidal trajectory.
+The velocity output is given by the ratio between distance and time. To avoid vibration we set  a treshold
+@inputs:
+- man_t *manip: pointer to the manipulator struct;
+- pid_controller_t *pid1 : pointer to the PI velocity controller of the first joint
+- pid_controller_t *pid2 : pointer to the PI velocity controller of the second joint
+- float u: velocity output
+- float setpoint: (not used) put to 0, the set point is read from the manip struct
 
-
-
+@outputs:
+- void;
+@#
+*/
 void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u , float setpoint){
 
 	float set_point1,set_point2,measure1, measure2,u0,u1,tc0,tc1;
@@ -1259,8 +1259,7 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	rbpeek(&manip->q0,&set_point1);
 	rbpeek(&manip->q1,&set_point2);
 
-	//set_point1 = 0;
-	//set_point2 = setpoint;
+
 
 	dq_actual0=set_point1;
 	//ddq_actual1=set_point2;
@@ -1276,8 +1275,6 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
 
-	ddq_actual0=pid1->out;
-	ddq_actual1=pid2->out;
 
 
 	//printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
@@ -1288,14 +1285,14 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     if (ABS(u[0]-measure1)<0.01){
     	tc0= 1000000;
     }else{
-    tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/1.05);
+    tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/0.4);//1.05
     }
-   // printf("%f \n", fabs(u[1]- measure2));
-    fflush(stdout);
+
+   // fflush(stdout);
     if (ABS(u[1]- measure2)<0.01){
         	tc1= 1000000;
         }else{
-        tc1 = sqrt(2*M_PI*ABS(u[1]-measure2)/0.85);   //1.5 ----> come se fosse un jerk
+        tc1 = sqrt(2*M_PI*ABS(u[1]-measure2)/0.4);   //1.5 ----> come se fosse un jerk
         }
 
 
@@ -1306,12 +1303,28 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     *(u+1)=u1;
 
 
-	//*(u)=0;
+    ddq_actual0=pid1->out;
+    ddq_actual1=pid2->out;
+
 
 
 }
 
+/*
+#@
+@name: PID_controller_velocity
+@brief: Calculate the velocity control  output for the links.
+@inputs:
+- man_t *manip: pointer to the manipulator struct;
+- pid_controller_t *pid1 : pointer to the PI velocity controller of the first joint
+- pid_controller_t *pid2 : pointer to the PI velocity controller of the second joint
+- float u: velocity output
+- float setpoint: (not used) put to 0, the set point is read from the manip struct
 
+@outputs:
+- void;
+@#
+*/
 
 void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u , float setpoint){
 
@@ -1353,11 +1366,33 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 
 
 
-void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid_controller_t *pid1,pid_controller_t *pid2){
+
+/*
+#@
+@name: homing
+@brief: Start the homing sequence when the HOM command is recived from the serial
+@note: In the serial callback we don't call directly the  homing method because the if  this happen we are unable to sense other  the interrupt when the homing code is executed,
+to get around this drawback, we set high the flag variable homing_triggered and than in the main loop the homing sequence starts.
+The flag variables is_home1 and is_home 2 are used for disable the possibility of changing the link offset measured during the homing procedure
+@inputs:
+- man_t *manip: pointer to the manipulator struct;
+- TIM_HandleTypeDef *htim1: First joint PWM out timer
+- TIM_HandleTypeDef *htim2: Second joint PWM out timer
+- pid_controller_t *pid_v1 : pointer to the PI velocity controller of the first joint
+- pid_controller_t *pid_v2 : pointer to the PI velocity controller of the second joint
+- pid_controller_t *pid_p1 : pointer to the PID  position controller of the first joint
+- pid_controller_t *pid_p2 : pointer to the PID  position controller of the second joint
+
+@outputs:
+- void;
+@#
+*/
+
+void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid_controller_t *pid_v1,pid_controller_t *pid_v2, pid_controller_t *pid_p1, pid_controller_t *pid_p2){
 
     float u[2]={0, 0};
     float pos[2]={0, 0};
-    float pos_real[2]={-2.11350, 2.35053 };
+    float pos_real[2]={-2.11350, 2.39353 };
 
     is_home1=1;
     is_home2=1;
@@ -1365,16 +1400,16 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
     limit_switch1=0;
     limit_switch2=0;
 
-    offset1=0;
-    offset2=0;
+     offset1=0;
+     offset2=0;
 
 	/*apply velocity input*/
 	while(!limit_switch1 ){
 
-	rbpush(&manip->dq0,-0.6);
+	rbpush(&manip->dq0,-0.7);
 
 	 update_speeds(manip);
-	 PID_controller_velocity( manip, pid1, pid2, u ,0);
+	 PID_controller_velocity( manip, pid_v1, pid_v2, u ,0);
 	 apply_velocity_input(htim1, htim2, u);
 
 	 HAL_Delay((uint32_t) (T_C*1000));
@@ -1392,10 +1427,10 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 
 
 	rbpush(&manip->dq0,0);
-    rbpush(&manip->dq1,0.3);
+    rbpush(&manip->dq1,0.5);
 
 		 update_speeds(manip);
-		 PID_controller_velocity( manip, pid1, pid2, u ,0);
+		 PID_controller_velocity( manip, pid_v1, pid_v2, u ,0);
 		 apply_velocity_input(htim1, htim2, u);
 
 		 HAL_Delay((uint32_t) (T_C*1000));
@@ -1415,20 +1450,32 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 	u[1]=0;
 	apply_velocity_input(htim1, htim2, u);
 
+	printf(" WHILE: offset2: %f \n ",offset2);
+	fflush(stdout);
+
     offset1-=pos_real[0];
     offset2-=pos_real[1];
     rblast(&manip->q0_actual,&pos[0]);
     rblast(&manip->q1_actual,&pos[1]);
 
+
+    printf("pos_real[1]: %f \n",pos_real[1]);
+    printf("pos[0]: %f \n",pos[0]);
+    printf("pos[1]: %f \n",pos[1]);
+    fflush(stdout);
+
 	while(1){
 
-	if((ABS(pos[0])> 0.01) || (ABS(pos[1])> 0.01)){
+	if((ABS(pos[0])> 0.001) || (ABS(pos[1])> 0.001)){
 
-		PID_controller_position( manip, pid1, pid2, u ,0);
+		PID_controller_position( manip, pid_p1, pid_p2, u ,0);
 		apply_velocity_input(htim1, htim2,  u);
 		rblast(&manip->q0_actual,&pos[0]);
 		rblast(&manip->q1_actual,&pos[1]);
 		HAL_Delay((uint32_t) (T_C*1000));
+
+		  printf("pos[0]: %f \n",pos[0]);
+		  fflush(stdout);
 	 }
 
 	else{
@@ -1442,8 +1489,8 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 	u[1]=0;
 	apply_velocity_input(htim1, htim2, u);
 
-	is_home1=0;
-	is_home2=0;
+	//is_home1=0;
+	//is_home2=0;
 
 	limit_switch1=0;
 	limit_switch2=0;

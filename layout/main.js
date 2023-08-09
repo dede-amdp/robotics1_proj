@@ -19,9 +19,9 @@ var dom_mouseX, dom_mouseY; // mouse position on canvas
 
 settings = {
     'origin': { 'x': input_canvas.width / 2, 'y': input_canvas.height / 2 }, // origin of the manipulator
-    'm_p': 1 / input_canvas.width, // m/p -> meters per pixel conversion factor
-    'l1': 0.25, // length of the first arm
-    'l2': 0.25, // length of the second arm
+    'm_p': (0.328*2)/ input_canvas.width, // m/p -> meters per pixel conversion factor
+    'l1': 0.170, // length of the first arm
+    'l2': 0.158, // length of the second arm
     's_step': 1/50, // slicing step size
     'framerate': 60 // animation framerate
 };

@@ -16,10 +16,10 @@ const settings = {
 
 /* this is an initialized settings variable that SHOULD be overwritten with the correct values */
 var settings = {
-    'origin': { 'x': 0, 'y': 500 / 2 },
-    'm_p': 0.5 / 500, // m/p 
-    'l1': 0.25,
-    'l2': 0.25
+    'origin': { 'x': 0, 'y': 700 / 2 }, // x=0
+    'm_p': 0.328 / 350, // m/p 
+    'l1': 0.170,
+    'l2': 0.158
 };
 
 
