@@ -24,7 +24,7 @@ typedef struct ringbuffer {
     uint8_t head;                               /* where data will be popped */
     uint8_t length;                             /* number of elements */
     rbelement_t buffer[RBUF_SZ];                /* actual buffer */
-} ringbuffer_t; /* 24 bits + RBUF_SZ*64 bits -> with RBUF_SZ = 10: 664 bits ~> 83 B of data */
+} ringbuffer_t; /* 24 bits + RBUF_SZ*32 bits -> with RBUF_SZ = 10: 320+24 bits = 344 bits ~> 43 B of data */
 
 rberror_t rbpush(ringbuffer_t *buffer, rbelement_t data);
 rberror_t rbpop(ringbuffer_t *buffer, rbelement_t *data);

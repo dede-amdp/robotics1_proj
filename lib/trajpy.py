@@ -11,7 +11,7 @@ function = Callable[[float], float] # function handle type for type annotation
 """ #@
 @name: time_row
 @brief: computes and returns as a list a row of the vandermont matrix
-@notes: the returned row is actually the one linked to the equation a0t^0+a1t^1+a2t^2+...+ant^n = 0 => 
+@notes: the returned row is actually the one linked to the equation a0t^0 + a1t^1 + a2t^2 + ... + ant^n = 0 => 
 $$\sum_i^n a_it^i = 0$$
 with n specified by the user. The method can also return the *derivative* of this equation, up to the 2nd derivative
 @inputs: 
@@ -35,7 +35,7 @@ def time_row(t:float, deg: int, der:int=0) -> list[float]:
 @name: spline3
 @brief: computes the coefficients of a cubic spline
 @notes: the cubic spline has the following structure:\
-q = a0+a1t+a2t^2+a3t^3\
+q = a0+a1t+a2t^2 + a3t^3\
 dq = a1+2a2t+3a3t^2\
 ddq = 2a2+6a3t\
 where q is the position spline, dq is the velocity spline and ddq is the acceleration spline
@@ -70,9 +70,9 @@ def spline3(q: list[point_time], dq: list[point_time]) -> list[function]:
 @name: spline5
 @brief: computes the coefficients of a 5th order spline
 @notes: the 5th order spline has the following structure:\
-q = a0+a1t+a2t^2+a3t^3+a4t^4+a5t^5\
-dq = a1+2a2t+3a3t^2+4a4t^3+5a5t^4\
-ddq = 2a2+6a3t+12a4t^2+20a5t^3
+q = a0+a1t+a2t^2 + a3t^3 + a4t^4 + a5t^5\
+dq = a1+2a2t+3a3t^2 + 4a4t^3 + 5a5t^4\
+ddq = 2a2+6a3t+12a4t^2 + 20a5t^3
 @inputs: 
 - list[point_time] q: it is a list of tuples of a value (float) and a time instant (float). These values and time instants will be used to write a polynomial (with variable "t") that will cross the specified values at t equal to the specified times;
 - list[point_time] dq: it is a list of a value (float) and a time instant (float). These values and time instants will be used to write a polynomial (with variable "t") which derivative will cross the specified values at t equal to the specified times;

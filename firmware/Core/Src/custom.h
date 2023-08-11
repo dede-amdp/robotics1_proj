@@ -6,9 +6,11 @@
 #ifndef CUSTOM_DEF
 #define CUSTOM_DEF
 /*
-RESURCES:
-https://www.pololu.com/product/2133/resources
+RESOURCES:
+DRV8825 driver: https://www.pololu.com/product/2133/resources
+*/
 
+/*
 TRJ:q0:dq0:ddq0:q1:dq1:ddq1:penup
 
 bytes:
@@ -18,9 +20,6 @@ bytes:
 +1 for the penup value which is 1 or 0
 
 = 119 (bytes) -> use 128 bytes just in case longer messages are needed
-
-
-
 */
 #define DATA_SZ 120
 /* CONTROL TIME  The control time  must be 10 times smaller than the dominant time constant (0.022s)  */
@@ -111,8 +110,10 @@ bytes:
 - ringbuffer_t penup_actual: holds up to RBUF_SZ values of actual position of the end-effector motor;
 - float B[4]: array that represents a linearized (as in making a 2x2 become a 1x4) inertia matrix;
 - float C[4]: array that represents a linearized (as in making a 2x2 become a 1x4) coriolis matrix;
-- TIM_HandleTypeDef *htim_encoder1: pointer to the timer used to read the first encoder;
-- TIM_HandleTypeDef *htim_encoder2: pointer to the timer used to read the second encoder;
+- TIM_HandleTypeDef \*htim_encoder1: pointer to the timer used to read the first encoder;
+- TIM_HandleTypeDef \*htim_encoder2: pointer to the timer used to read the second encoder;
+- TIM_HandleTypeDef \*htim_motor1: pointer to the timer used to apply the PWM signal to the first motor;
+- TIM_HandleTypeDef \*htim_motor2: pointer to the timer used to apply the PWM signal to the second motor;
 @#
 */
 typedef struct manipulator {
@@ -132,13 +133,15 @@ typedef struct manipulator {
     ringbuffer_t ddq0_actual;
     ringbuffer_t ddq1_actual;
     ringbuffer_t penup_actual;
+    /* dynamical model */
     float B[4];
     float C[4];
+    /* timer handlers for encoders and motor PWM signals */
     TIM_HandleTypeDef *htim_encoder1;
     TIM_HandleTypeDef *htim_encoder2;
     TIM_HandleTypeDef *htim_motor1;
     TIM_HandleTypeDef *htim_motor2;
-} man_t; /* 1.2 kB of data with RBUF_SZ = 10 -> total mC memory: 512 KB, remaining 510.8 KB */
+} man_t; /* 0.73 kB of data with RBUF_SZ = 10 excluding the 4 timer handlers */
 
 typedef struct rate {
     uint32_t last_time;
@@ -168,8 +171,6 @@ extern const uint8_t reduction2;
 extern float disp1, disp2;
 extern float dq_actual0, dq_actual1;
 extern float ddq_actual0, ddq_actual1;
-extern ringbuffer_t timestamps;
-extern uint32_t count;
 extern float ui[2];
 extern float pos_prec[2];
 
@@ -199,8 +200,8 @@ void C_calc(man_t *manip);
 void controller(man_t *manip, float *u);
 
 
-void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
-void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u,float setpoint);
+void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u);
+void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u);
 void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, int8_t *dir);
 void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual,ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est);
 
@@ -217,5 +218,6 @@ void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_Handle
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4);
 
 void log_data(UART_HandleTypeDef *huart, man_t *manip);
+void setup_encoders(TIM_HandleTypeDef *htim);
 
 #endif

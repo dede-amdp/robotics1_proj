@@ -99,7 +99,17 @@ def h2d(string: str) -> float: # hex to double
     return unpack('>f', unhexlify(string))[0]
 
 
-
+"""
+#@
+@name: send_data
+@brief: sends data to the micro controller
+@inputs: 
+- str msg_type: type of message to send : "trj" is used for trajectory data;
+- any list \*\*data: any number of lists (containing the position setpoints to send in case of trj data);
+@outputs: 
+- None;
+@#
+"""
 def send_data(msg_type: str, **data):
     match msg_type:
         case 'trj':
@@ -145,6 +155,16 @@ def send_data(msg_type: str, **data):
             print(f"TRJ SENT,{len(data['q'][0])}") # DEBUG
             # print(scm.read_serial().decode('utf-8')) # DEBUG
 
+"""
+#@
+@name: trace_trajectory
+@brief: draws the trajectories on the GUI
+@inputs: 
+- tuple[list, list] q: a tuple containing the list of positions for each motor;
+@outputs: 
+- None;
+@#
+"""
 def trace_trajectory(q:tuple[list,list]):
     q1 = q[0][:]
     q2 = q[1][:]
@@ -159,10 +179,30 @@ def trace_trajectory(q:tuple[list,list]):
     # END DEBUG
 
 
+"""
+#@
+@name: eel.expose py_log
+@brief: simply prints a message on the python console
+@inputs: 
+- str msg: message to be print;
+@outputs: 
+- None;
+@#
+"""
 @eel.expose
 def py_log(msg):
     print(msg)
 
+"""
+#@
+@name: eel.expose py_get_data 
+@brief: gets the trajectory data from the web GUI and converts it into a list of setpoints to be sent to the micro controller
+@inputs: 
+- None;
+@outputs: 
+- None;
+@#
+"""
 @eel.expose
 def py_get_data():
 
@@ -254,18 +294,47 @@ def py_log_data():
     with open('log_data.csv', 'w') as file:
         file.write(content)
         file.close() # this is unnecessary because the with statement handles it already, but better safe than sorry
-    
+
+"""
+#@
+@name: eel.expose py_homing_cmd
+@brief: sends the homing command to the micro controller
+@inputs: 
+- None;
+@outputs: 
+- None;
+@#
+"""
 @eel.expose
 def py_homing_cmd():
     # send the homing command 
     scm.write_serial('HOM:'+('0'*18+':')*6+'0\n')
 
 
-
+"""
+#@
+@name: eel.expose py_serial_online
+@brief: return whether the serial is online or not
+@inputs: 
+- None;
+@outputs: 
+- bool: bool value that shows if the serial is online or not;
+@#
+"""
 @eel.expose
 def py_serial_online():
     return settings['ser_started'] # return whether the serial is started or not
 
+"""
+#@
+@name: eel.expose py_serial_sartup
+@brief: initializes the serial communication
+@inputs: 
+- None;
+@outputs: 
+- None;
+@#
+"""
 @eel.expose
 def py_serial_startup():
     scm.ser_init()

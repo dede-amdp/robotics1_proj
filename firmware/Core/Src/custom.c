@@ -30,183 +30,126 @@ const float Kd[4] = {2,0,0,2};
 /* reduction values for motors */
 const uint8_t reduction1 = 10;
 const uint8_t reduction2 = 5;
+float offset1 = 0.f;
+float offset2 = 0.f;
 
-ringbuffer_t timestamps;
-float disp1, disp2;
-float offset1=0.f;
-float offset2=0.f;
-float dq_actual0, dq_actual1;
-float ddq_actual0, ddq_actual1;
-uint32_t count = 0;
 int limit_switch1 = 0;
 int limit_switch2 = 1;
-float ui[2]= {0.0 , 0.0};
+float ui[2] = {0.0 , 0.0};
 
-float pos_prec[2]={0.f ,0.f};
+float pos_prec[2] = {0.f ,0.f};
 
-uint8_t is_home1=0;
-uint8_t is_home2=0;
-uint8_t homing_triggered=0;
+uint8_t is_home1 = 0;
+uint8_t is_home2 = 0;
+uint8_t homing_triggered = 0;
 uint8_t log_triggered = 0;
+
+/* Needed for debugging purposes */
+
+float disp1, disp2;
+float dq_actual0, dq_actual1;
+float ddq_actual0, ddq_actual1;
+// uint32_t count = 0;
 
 
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-
-	//__disable_irq();
-
 	char str[DATA_SZ];
-
-    char *cmd, *data;
-
-    //printf(rx_data);
-   // printf("\n");
-    //fflush(stdout);
-
-
-
+    char *cmd, *data, *save_ptr;
     double value;
     unsigned long long encoding;
     uint8_t i = 0;
+
+    memcpy(str, rx_data, sizeof str);
     /* read the first characters */
-
-    memcpy(str,rx_data,sizeof str);
-
-    char  *save_ptr;
-
     cmd = strtok_r((char*) str, ":", &save_ptr);
-
-   // printf("%s %d \n",cmd,!strcmp(cmd, "TRJ"));
-    //fflush(stdout);
-
-    //printf(cmd);
-    // printf("wry \n");
-    //printf("%d \n",!strcmp(cmd, "HOM"));
-    //fflush(stdout);
-
     if(!strcmp(cmd, "TRJ")){
-    	   count++;
-
-    	/* trj case*/
+        /* trj case*/
         /* READ the data from the serial and populate the corresponding members of the man_t struct 
            these values will be used to set the reference value for the control loop */
-        //data = strtok(cmd+sizeof cmd, ":");
-	   data = strtok_r(cmd+sizeof cmd, ":",  &save_ptr);
+        data = strtok_r(cmd+sizeof cmd, ":",  &save_ptr);
         while(data != NULL){
             if(i == 6) break; /* reading penup */
-            // value = "0x"; /* will contain the value extracted from the received string */
-            encoding = strtoull(data, NULL, 16);
-            memcpy(&value, &encoding, sizeof value);
-
-            // value = strcat(value, data); /* string concatenation REF: https://www.programiz.com/c-programming/library-function/string.h/strcat */
-            rbpush((((ringbuffer_t *) &manip)+i), (float) value); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
+            encoding = strtoull(data, NULL, 16); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
+            memcpy(&value, &encoding, sizeof value); /* copy the IEEE754 double representation into a memory space for double */
+            rbpush((((ringbuffer_t *) &manip)+i), (float) value); /* push the value inside the correct ringbuffer ringbuffer */
             data = strtok_r(NULL, ":", &save_ptr);
             i++;
         }
         rbpush(&manip.penup, (float) atoi(data));
     }else if(!strcmp(cmd, "HOM")){
-
-    	printf(rx_data);
-    	    fflush(stdout);
-
-    homing_triggered=1;
-
-
-
+    	/* Home command case */
+    	/*
+        printf(rx_data);
+        fflush(stdout);
+        homing_triggered=1;
+        */
     }else if(!strcmp(cmd, "POS")){
+    	/* Position command case */
         log_triggered = 1;
     }else{ /* default case */
 
     }
     /* wait again for incoming data */
     HAL_UART_Receive_DMA(huart, rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
-
-    //HAL_UART_Receive_DMA(huart, rx_data, 121);
-
-
-
-	//printf(" count %d \n",count);
-
-
-
-    //__enable_irq();
-
-       return
-	   count++;
-
-
-				/* Debug*/
-
-		  //HAL_UART_Receive_DMA(huart, rx_data, 121);
-
-
-
+    return;
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-    // TODO: Implement limit switch handling
     uint32_t now;
     now = HAL_GetTick();
-
-
     if((now - previous_trigger1) > DEBOUNCE_DELAY ){
        if (GPIO_Pin==LIMIT_SWITCH_1_Pin){
-    	if(!triggered1){
-          limit_switch1 = 1;
-          if(is_home1){
-          rblast(&manip.q0_actual,&offset1);
-          printf("CNT1: %x \n",manip.htim_encoder1->Instance->CNT);
-         fflush(stdout);
-          //offset1=2*M_PI-offset1;
-
-          is_home1=0;
-          }
-            // SECTION - DEBUG
-          printf("trigger1 offset1: %f \n",offset1);
-         		 fflush(stdout);
-            HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-            // !SECTION - DEBUG
+			if(!triggered1){
+				  limit_switch1 = 1;
+				  if(is_home1){
+					  rblast(&manip.q0_actual,&offset1);
+					  /*
+					  printf("CNT1: %x \n",manip.htim_encoder1->Instance->CNT);
+					  fflush(stdout);
+					  */
+				  is_home1=0;
+			  }
+			  // SECTION - DEBUG
+			  printf("trigger1 offset1: %f \n",offset1);
+			  fflush(stdout);
+			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			  // !SECTION - DEBUG
         }
         triggered1 = 1-triggered1;
         previous_trigger1 = now;
        }
      }
 
- if((now - previous_trigger2) > DEBOUNCE_DELAY ){
-    if(GPIO_Pin==LIMIT_SWITCH_2_Pin){
-        if(!triggered2){
-            limit_switch2 = 1;
-            if(is_home2){
-            rblast(&manip.q1_actual,&offset2);
-            printf("CNT2: %x \n",manip.htim_encoder2->Instance->CNT);
-            fflush(stdout);
-
-            is_home2=0;
-		 }
-		   // SECTION - DEBUG
-		 printf("trigger2 offset2: %f \n",offset2);
-
-		 fflush(stdout);
-		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		   // !SECTION - DEBUG
-	   }
-	   triggered2 = 1-triggered2;
-	   previous_trigger2 = now;
-
-       }
-
-  }
-
-    
+	 if((now - previous_trigger2) > DEBOUNCE_DELAY ){
+		if(GPIO_Pin==LIMIT_SWITCH_2_Pin){
+			if(!triggered2){
+				limit_switch2 = 1;
+				if(is_home2){
+					rblast(&manip.q1_actual,&offset2);
+					/*
+					printf("CNT2: %x \n",manip.htim_encoder2->Instance->CNT);
+					fflush(stdout);
+					*/
+					is_home2=0;
+				}
+				// SECTION - DEBUG
+				printf("trigger2 offset2: %f \n",offset2);
+				fflush(stdout);
+				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				// !SECTION - DEBUG
+			}
+			triggered2 = 1-triggered2;
+			previous_trigger2 = now;
+		   }
+	  }
 }
 
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if(htim->Instance == TIM10){
-		/* check if it is the proper instance */
-		read_encoders(&manip);
-
+	if(htim->Instance == TIM10){ /* check if it is the proper instance */
+		read_encoders(&manip); /* read encoders with the correct timing */
 	}
 }
 
@@ -247,9 +190,9 @@ int _write(int file,char *ptr, int len){
 @name: init_man
 @brief: initializes the members of the man_t struct
 @inputs: 
-- man_t *manip: man_t obj. to initialize;
-- TIM_HandleTypeDef *htim1: pointer to the timer used to decode the output of the first encoder;
-- TIM_HandleTypeDef *htim2: pointer to the timer used to decode the output of the second encode;
+- man_t \*manip: man_t obj. to initialize;
+- TIM_HandleTypeDef \*htim1: pointer to the timer used to decode the output of the first encoder;
+- TIM_HandleTypeDef \*htim2: pointer to the timer used to decode the output of the second encode;
 @outputs: 
 - void;
 @#
@@ -276,13 +219,13 @@ void init_man(man_t *manip, TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, 
 @name: dot
 @brief: computes the dot product between two matrices, A and B, represented in vector form;
 @inputs: 
-- float *A: pointer to a vector of floats of size nA*mA, which represents the first nAxmA matrix;
+- float \*A: pointer to a vector of floats of size nA*mA, which represents the first nAxmA matrix;
 - uint8_t nA: number of rows of matrix A;
 - uint8_t mA: number of columns of matrix A;
-- float *B: pointer to a vector of floats of size nB*mB, which represents the second nBxmB matrix;
+- float \*B: pointer to a vector of floats of size nB*mB, which represents the second nBxmB matrix;
 - uint8_t nB: number of rows of matrix B;
 - uint8_t mB: number of columns of matrix B;
-- float *C: pointer to a vector of floats of size nA*mB, which represents the resulting nAxmB matrix -> if the operation cannot be done, it will be NULL;
+- float \*C: pointer to a vector of floats of size nA*mB, which represents the resulting nAxmB matrix -> if the operation cannot be done, it will be NULL;
 @outputs: 
 - uint8_t: 0 or 1 that shows whether the operation completed successfully or not.
 @#
@@ -319,8 +262,8 @@ uint8_t dot(float *A, uint8_t nA, uint8_t mA, float* B, uint8_t nB, uint8_t mB, 
 @name: inv2x2
 @brief: Inverts (if possible) a 2x2 matrix
 @inputs: 
-- float *M: pointer to the matrix to invert;
-- float *invM: pointer to the inverted matrix (NULL if inversion is not possible);
+- float \*M: pointer to the matrix to invert;
+- float \*invM: pointer to the inverted matrix (NULL if inversion is not possible);
 @outputs: 
 - uint8_t: shows whether the inversion was completed or not
 @#
@@ -343,10 +286,10 @@ uint8_t inv2x2(float *M, float *invM){
 @name: sum
 @brief: sums two matrices (with the same size)
 @inputs: 
-- float *A: pointer to the first matrix to sum;
-- float *B: pointer to the second matrix to sum;
+- float \*A: pointer to the first matrix to sum;
+- float \*B: pointer to the second matrix to sum;
 - uint8_t n: number of elements in the matrix;
-- float *C: pointer to the resulting matrix;
+- float \*C: pointer to the resulting matrix;
 @outputs: 
 - void;
 @#
@@ -363,10 +306,10 @@ void sum(float *A, float *B, uint8_t n, float *C){
 @name: diff
 @brief: subtracts two matrices (with the same size)
 @inputs: 
-- float *A: pointer to the first matrix to subtract;
-- float *B: pointer to the second matrix to subtract;
+- float \*A: pointer to the first matrix to subtract;
+- float \*B: pointer to the second matrix to subtract;
 - uint8_t n: number of elements in the matrix;
-- float *C: pointer to the resulting matrix;
+- float \*C: pointer to the resulting matrix;
 @outputs: 
 - void;
 @#
@@ -382,14 +325,14 @@ void diff(float *A, float *B, uint8_t n, float *C){
 #@
 @name: det
 @brief: computes the determinant of a n x n matrix
-@notes: this particular implementation of the determinant algorithm doers not use recursion: is uses the property of elementary row operations that do not change the 
+@notes: this particular implementation of the determinant algorithm does not use recursion: is uses the property of elementary row operations that do not change the 
 determinant of the matrix to find a upper triangular matrix with the same determinant of the original matrix whose determinant is to be computed.
 The determinant of a triangular matrix is the multiplication of the elements on its main diagonal: by finding a triangular matrix B with the same determinant of a given square matrix A, 
 the determinant of matrix A can be found by computing the determinant of matrix B.
 @inputs: 
-- float *M: pointer to the determinant whose determinant is to be computed. IMPORTANT: the values in this matrix will be changed: ensure to keep the original data safe by passing a copy of the original matrix;
+- float \*M: pointer to the determinant whose determinant is to be computed. IMPORTANT: the values in this matrix will be changed: ensure to keep the original data safe by passing a copy of the original matrix;
 - uint8_t n: order of the matrix;
-- float *d: pointer to the variable that will hold the resulting determinant;
+- float \*d: pointer to the variable that will hold the resulting determinant;
 @outputs: 
 - void;
 @#
@@ -457,12 +400,12 @@ void det(float *M, uint8_t n, float *d){
 @brief: computes the inverse of a square matrix M;
 @notes: the method requires pointer to temporary variables that will hold data used for the computation;
 @inputs: 
-- float *M: pointer to the matrix whose inverse should be computed;
-- float *adjM: pointer to the temporary variable that will hold the adjugate matrix >> should be a nxn array just like M;
-- float *subM: pointer to the temporary variable that will hold the submatrices used for the computation of the adjugate matrix >> should be a (n-1)x(n-1) array;
-- float *trM: pointer to the temporary variable that will hold the transposed adjugate matrix >> should be a nxn array just like M;
+- float \*M: pointer to the matrix whose inverse should be computed;
+- float \*adjM: pointer to the temporary variable that will hold the adjugate matrix >> should be a nxn array just like M;
+- float \*subM: pointer to the temporary variable that will hold the submatrices used for the computation of the adjugate matrix >> should be a (n-1)x(n-1) array;
+- float \*trM: pointer to the temporary variable that will hold the transposed adjugate matrix >> should be a nxn array just like M;
 - uint8_t n: order of the matrices;
-- float *invM: pointer to the temporary variable that will hold the inverse matrix of M;
+- float \*invM: pointer to the temporary variable that will hold the inverse matrix of M;
 @outputs: 
 - uint8_t: it is a boolean value that shows whether the inversion is completed successfully or not.
 @#
@@ -490,10 +433,10 @@ uint8_t inv(float *M, float *adjM, float *subM, float *trM, uint8_t n, float *in
 @brief: computes the adjugate matrix of M
 @notes: the method requires temporary variables to hold useful data for the computation;
 @inputs: 
-- float *M: pointer to the **square** matrix of which the adjugate should be computed;
-- float *subM: pointer to the temporary variable that will hold the submatrices used for the computation >> should be a (n-1)x(n-1) array;
+- float \*M: pointer to the **square** matrix of which the adjugate should be computed;
+- float \*subM: pointer to the temporary variable that will hold the submatrices used for the computation >> should be a (n-1)x(n-1) array;
 - uint8_t n: order of the matrix;
-- float *adjM: pointer to the variable that will hold the resulting adjugate matrix;
+- float \*adjM: pointer to the variable that will hold the resulting adjugate matrix;
 @outputs: 
 - void;
 @#
@@ -526,10 +469,10 @@ void adj(float *M, float *subM, uint8_t n, float *adjM){
 @name: tr
 @brief: transposes a matrix
 @inputs: 
-- float *M: pointer to the matrix to transpose;
+- float \*M: pointer to the matrix to transpose;
 - uint8_t n: number of rows;
 - uint8_t m: number of columns;
-- float *trM: pointer to the variable that will hold the transposed matrix;
+- float \*trM: pointer to the variable that will hold the transposed matrix;
 @outputs: 
 - void;
 @#
@@ -549,15 +492,15 @@ void tr(float *M, uint8_t n, uint8_t m, float *trM){
 @brief: computes the pseudo inverse of matrix M: (M^T*M)^(-1)*M^T
 @notes: the method requires temporary variables to hold useful data for the computation; 
 @inputs: 
-- float *M: pointer to the matrix to pseudo-invert;
-- float *trM: pointer to the variable that will hold the transposed matrix used in the pseudo-inversion;
-- float *tempM: pointer to the variable that will hold the temporary transposition during the inversion;
-- float *adjM: pointer to the variable that will hold the adjugate matrix used during the inversion;
-- float *subM: pointer to the variable that will hold the submatrix used during the computation of the adjugate;
-- float *invM: pointer to the variable that will hold the inverted matrix (A^T*A)^(-1);
-- float *dotM: pointer to the variable that will hold the dot product between A^T and A; 
+- float \*M: pointer to the matrix to pseudo-invert;
+- float \*trM: pointer to the variable that will hold the transposed matrix used in the pseudo-inversion;
+- float \*tempM: pointer to the variable that will hold the temporary transposition during the inversion;
+- float \*adjM: pointer to the variable that will hold the adjugate matrix used during the inversion;
+- float \*subM: pointer to the variable that will hold the submatrix used during the computation of the adjugate;
+- float \*invM: pointer to the variable that will hold the inverted matrix (A^T*A)^(-1);
+- float \*dotM: pointer to the variable that will hold the dot product between A^T and A; 
 - uint8_t n: order of the matrix to invert;
-- float *psinvM: pointer to the variable that will hold the pseudo-inverse;
+- float \*psinvM: pointer to the variable that will hold the pseudo-inverse;
 @outputs: 
 - void;
 @#
@@ -577,7 +520,7 @@ void pseudo_inv(float *M, float *trM, float *tempM, float *adjM, float *subM, fl
 @notes: the inertia matrix B of the manipulator depends on its current configuration: 
 it is computed analytically with the dynamic model found via the  Matlab Peter Corke toolbox 
 @inputs: 
-- man_t *manip: pointer to the manipulator struct that olds the reference and actual values of the position, speed and acceleration of the motors;
+- man_t \*manip: pointer to the manipulator struct that olds the reference and actual values of the position, speed and acceleration of the motors;
 @outputs:
 - void;
 @#
@@ -604,7 +547,7 @@ void B_calc(man_t *manip){
 @notes: the coriolis matrix C of the manipulator depends on its current configuration and joint speed: 
 it is computed analytically with the dynamic model found via the  Matlab Peter Corke toolbox 
 @inputs: 
-- man_t *manip: pointer to the manipulator struct that olds the reference and actual values of the position, speed and acceleration of the motors;
+- man_t \*manip: pointer to the manipulator struct that olds the reference and actual values of the position, speed and acceleration of the motors;
 @outputs:
 - void;
 @#
@@ -615,11 +558,6 @@ void C_calc(man_t *manip){
     rblast(&manip->q1_actual, &q2);
     rblast(&manip->dq0_actual, &dq1);
     rblast(&manip->dq1_actual, &dq2);
-
-    // SECTION DEBUG
-	// dq1 = dq_actual0;
-	// dq2 = dq_actual1;
-	// !SECTION DEBUG
 
     manip->C[0] = (float) ( - 0.5*dq2*(0.0047413*sin(q1 + 2*q2) + 0.010203*sin(q1 + q2) + 0.0094825*sin(q2))); // ( - 0.5*dq2*(0.024938*sin(q1 + 2*q2) + 0.049875*sin(q1 + q2) + 0.049875*sin(q2)));
     manip->C[1] = (float) ( - 0.000030008*(dq1 + dq2)*(79.0*sin(q1 + 2*q2) + 170*sin(q1 + q2) + 158*sin(q2))); // ( - 0.012469*(dq1 + dq2)*(sin(q1 + 2*q2) + 2*sin(q1 + q2) + 2*sin(q2)));
@@ -636,8 +574,8 @@ void C_calc(man_t *manip){
 @brief: implements the control law
 @notes: it implements the "Inverse Dynamics" control in the joint space.
 @inputs: 
-- man_t *manip: pointer to the manipulator struct that holds all the current motors' position, speed and acceleration and their reference values;
-- float *u: float[2] vector pointer that holds the control input to apply to motors (speed control);
+- man_t \*manip: pointer to the manipulator struct that holds all the current motors' position, speed and acceleration and their reference values;
+- float \*u: float[2] vector pointer that holds the control input to apply to motors (speed control);
 @outputs: 
 - void;
 @#
@@ -658,7 +596,6 @@ void controller(man_t *manip, float *u){
     float ep[2], ed[2], y[2], tau[2], Kpep[2], Kded[2], By[2], Cdq[2];
     float Bddq[2], invC[4], result[2];
     float d;
-    uint8_t i;
 
     /* data preparation */
     rbpop(&manip->q0, &q[0]);
@@ -679,12 +616,6 @@ void controller(man_t *manip, float *u){
 
     //diff(q, q_actual, 2, ep); /* q - q_d */
     //diff(dq, dq_actual, 2, ed); /* dq - dq_d */
-
-
-    // debug
-    //ddq_actual0=ddq_actual[0];
-    //ddq_actual1=ddq_actual[1];
-    //!debug
 
     ep[0]=q[0]-q_actual[0];
     ep[1]=q[1]-q_actual[1];
@@ -718,15 +649,9 @@ void controller(man_t *manip, float *u){
     sum(By, Cdq, 2, tau); /* tau = B*y+C*dq  */
 
 
-
-
-
-    // TODO: TEST THIS SHIT
-
     d = DET(manip->C);
     if(ABS(d) < 1e-5){
         /* if C is not invertible, use the desired values as inputs */
-        // TODO: Test and see if it works, otherwise use discrete integration
         *u = dq[0];
         *(u+1) = dq[1];
         return;
@@ -736,14 +661,6 @@ void controller(man_t *manip, float *u){
     diff(tau, Bddq, 2, result); /* tau - B*ddq */
     inv2x2(manip->C, invC); /* inv(C) */
     dot(invC, 2, 2, result, 2, 1, u); /* u = inv(C) * (tau - B*ddq) */
-
-    if(ABS(u[0])>1000 || ABS(u[1])>1000){
-
-    	double a;
-    	a=0;
-
-    }
-
 }
 
 /*
@@ -754,8 +671,8 @@ void controller(man_t *manip, float *u){
 - float dq: velocity (rad/s);
 - float resolution: resolution of the motor (how many radians is a single step?) -> expressed in radians;
 - float frequency: reciprocal of delta_t -> time period in which the change of position happens;
-- uint8_t *steps: pointer to the variable that will hold the number of steps;
-- int8_t *dir: pointer to the variable that will hold the direction (+1 means counterclockwise, -1 means clockwise);
+- uint8_t \*steps: pointer to the variable that will hold the number of steps;
+- int8_t \*dir: pointer to the variable that will hold the direction (+1 means counterclockwise, -1 means clockwise);
 @outputs: 
 - void;
 @#
@@ -778,25 +695,26 @@ void rad2stepdir(float dq, float resolution, float frequency, uint32_t *steps, i
 @name: speed_estimation
 @brief: computes the speed and acceleration estimations from a fixed number of previous motor positions
 @inputs: 
-- ringbuffer_t *q_actual: pointer to the ringbuffer struct that holds all the data relative to the motor position;
-- float *v_est: pointer to the variable that will hold the speed estimation;
-- float *a_est: pointer to the variable that will hold the acceleration estimation;
+- ringbuffer_t \*q_actual: pointer to the ringbuffer struct that holds all the data relative to the motor position;
+- float \*v_est: pointer to the variable that will hold the speed estimation;
+- float \*a_est: pointer to the variable that will hold the acceleration estimation;
 @outputs: 
 - void;
 @#
 */
 void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffer_t *ddq_actual, float reduction, float *v_est, float *a_est){
-    float now, esp;
+    /*
+	float now, esp;
     float A[ESTIMATION_STEPS*ESTIMATION_STEPS], X[ESTIMATION_STEPS], P[ESTIMATION_STEPS], invA[ESTIMATION_STEPS*ESTIMATION_STEPS];
+    */
     /* temp matrices */
+	/*
     float trM[ESTIMATION_STEPS*ESTIMATION_STEPS], tempM[ESTIMATION_STEPS*ESTIMATION_STEPS];
     float adjM[ESTIMATION_STEPS*ESTIMATION_STEPS], subM[(ESTIMATION_STEPS-1)*(ESTIMATION_STEPS-1)];
     float invM[ESTIMATION_STEPS*ESTIMATION_STEPS], dotM[ESTIMATION_STEPS*ESTIMATION_STEPS];
+    */
     uint8_t i;
-
-
-
-    float prev, succ, vel,acc, a, b;
+    float prev, succ, vel,acc, a;
     succ=0;
     prev=0;
     for(i = 0; i < 5; i++){
@@ -818,7 +736,7 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffe
 
     *v_est=0.8546*vel+((1-0.8546)*(succ-prev)/(T_C*5) );
 
-    /* filtering accelleration  with a first order filter  */
+    /* filtering acceleration  with a first order filter  */
 
     rbget(dq_actual, RBUF_SZ-1, &succ);
     rbget(dq_actual, RBUF_SZ-2, &prev);
@@ -834,7 +752,7 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffe
 @name: init_rate
 @brief: initializes the rate struct
 @inputs: 
-- rate_t *rate: pointer to the rate struct to initialize;
+- rate_t \*rate: pointer to the rate struct to initialize;
 - uint32_t ms: number of millisecond that define the rate;
 @outputs: 
 - void;
@@ -850,7 +768,7 @@ void init_rate(rate_t *rate, uint32_t ms){
 @name: rate_sleep
 @brief: stops the process to maintain a fixed framerate (useful in while loops to implement fixed time control loops)
 @inputs: 
-- rate_t *rate: pointer to the rate struct;
+- rate_t \*rate: pointer to the rate struct;
 @outputs: 
 - void;
 @#
@@ -877,7 +795,7 @@ void rate_sleep(rate_t *rate){
 taking into account the reduction ratio of each motor by means of the ARR registers of the timers (ARR=CPR*REDUCTION). 
 The method also estimates the speed and accelerations by using the timestamp method.
 @inputs: 
-- man_t *manip: pointer to the manipulator struct that holds both the desired and actual motor positions, speeds and accelerations;
+- man_t \*manip: pointer to the manipulator struct that holds both the desired and actual motor positions, speeds and accelerations;
 @outputs: outputs
 @#
 */
@@ -903,6 +821,7 @@ void read_encoders(man_t *manip){
     }
 
     displacement1 = (float) (2*M_PI*counter/(htim1->Instance->ARR)-offset1);
+    /* offset1 corrects the initial offset error */
 
     /* second encoder */
     counter = (htim2->Instance->CNT);
@@ -911,12 +830,9 @@ void read_encoders(man_t *manip){
         htim2->Instance->CNT = counter;  /* correct cnt value */
     }
     displacement2 = (float) ((2*M_PI) -  (2*M_PI*counter/(htim2->Instance->ARR))); /* the motor is upside down */
-
-   //displacement2 = (float) (2*M_PI*counter/(htim2->Instance->ARR)-offset2);
+    //displacement2 = (float) (2*M_PI*counter/(htim2->Instance->ARR)-offset2);
     displacement2-=offset2;
-
-
-
+    /* offset2 corrects the initial offset error */
 
     if(displacement1 > 2*M_PI){
     	displacement1 = 2*M_PI; /* clamping */
@@ -926,65 +842,24 @@ void read_encoders(man_t *manip){
 	}
 	if(!is_home1 && !is_home2){
 		if(displacement1 < -M_PI){
-				displacement1 = 2*M_PI+displacement1; // clamping
+			displacement1 = 2*M_PI+displacement1;  /* redefining the domain between -PI and +PI */
 		}
 
 		if(displacement2 < -M_PI){
-			displacement2 = 2*M_PI+displacement2; //clamping
+			displacement2 = 2*M_PI+displacement2; /* redefining the domain between -PI and +PI */
 		}
 
 		if(displacement1 > M_PI){
-			displacement1 = displacement1 - (2*M_PI); // redefining the domain between -PI and +PI
+			displacement1 = displacement1 - (2*M_PI); /* redefining the domain between -PI and +PI */
 		}
 		if(displacement2 > M_PI){
-			displacement2 = displacement2 - (2*M_PI); // redefining the domain between -PI and +PI
+			displacement2 = displacement2 - (2*M_PI); /* redefining the domain between -PI and +PI */
 		}
 	}
-    // SECTION DEBUG
-    // disp1 = displacement1;
-    // disp2 = displacement2;
-    /* !SECTION DEBUG
 
-    /* DIR bit: pag 287 of https://www.st.com/resource/en/reference_manual/rm0383-stm32f411xce-advanced-armbased-32bit-mcus-stmicroelectronics.pdf#page=287 */
-    /* dir: 0 = counterclockwise, 1 = clockwise */
-    /* the 5th bit of the CR1 register is the DIR bit */
-    /*
-    uint8_t dir1 = (uint8_t) (htim1->Instance->CR1 >> 4) & 1;
-    uint8_t dir2 = (uint8_t) (htim2->Instance->CR1 >> 4) & 1;
-    */
-    // SECTION DEBUG
+	/* push the displacement values in the position ringbuffer */
     rbpush(&manip->q0_actual, displacement1);
     rbpush(&manip->q1_actual, displacement2);
-    /*
-    float last_displacement;
-    rblast(&manip->q0_actual, &last_displacement);
-    if(last_displacement-displacement1 != 0){
-        rbpush(&manip->q0_actual, displacement1);
-    }
-    rblast(&manip->q1_actual, &last_displacement);
-	if(last_displacement-displacement2 != 0){
-		rbpush(&manip->q1_actual, displacement2);
-	}
-    // !SECTION DEBUG
-    */
-    /*
-    rbpush(&manip->q0_actual, displacement1);
-    rbpush(&manip->q1_actual, displacement2);
-    */
-    /* TODO: do logging of data */
-
-    /* speed and acceleration estimations for both motors*/
-	/*
-    speed_estimation(&manip->q0_actual, &manip->dq0_actual, &v_est, &a_est);
-    rbpush(&manip->dq0_actual, v_est);
-    rbpush(&manip->ddq0_actual, a_est);
-
-    speed_estimation(&manip->q1_actual, &manip->dq1_actual, &v_est, &a_est);
-    rbpush(&manip->dq1_actual, v_est);
-    rbpush(&manip->ddq1_actual, a_est);
-    */
-
-
 }
 
 /*
@@ -992,11 +867,10 @@ void read_encoders(man_t *manip){
 @name: update_speeds
 @brief: update the estimated speed data from both the encoders of the 2Dofs planar manipulator
 @inputs:
-- man_t *manip: pointer to the manipulator struct that holds both the desired and actual motor positions, speeds and accelerations;
+- man_t \*manip: pointer to the manipulator struct that holds both the desired and actual motor positions, speeds and accelerations;
 @outputs: outputs
 @#
 */
-
 void update_speeds(man_t *manip){
 	float v_est, a_est;
 	speed_estimation(&manip->q0_actual, &manip->dq0_actual,&manip->ddq0_actual, reduction1, &v_est, &a_est);
@@ -1010,138 +884,150 @@ void update_speeds(man_t *manip){
 	rbpush(&manip->ddq1_actual, a_est);
 }
 
+/*
+#@
+@name: apply_velocity_input
+@brief: applies the velocity inputs to the motors
+@notes: it uses a timer to send a pulse width modulation signal whose frequency regulates the rotation speed of the motors.
+
+The formulae used to set the ARR and CCR registers:
+$$ARR = \frac{Res\cdot freq_{clock}}{v\cdot reduction\cdot microstepping\cdot prescaler}$$
+$$CCR = ARR/2$$
+with Res being the motor step resolution (in radians), v is the velocity, reduction is the reduction ratio and prescaler is the prescaler value (which is fixed).
+@inputs: 
+- TIM_HandleTypeDef \*htim1: pointer to the handler of the timer that sends the PWM signal to the first motor;
+- TIM_HandleTypeDef \*htim2: pointer to the handler of the timer that sends the PWM signal to the second motor;
+- float \*u: array of two floats containing the velocity inputs of the motors;
+@outputs: 
+- void;
+@#
+*/
 void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u){
-    /* T_C = steps*clock_period */
     int8_t dir1, dir2;
     uint32_t f;
-    int32_t stepdir;
-    uint32_t steps, ARR, CCR;
+    uint32_t ARR, CCR;
     uint32_t prescaler1, prescaler2;
-    float clock_period;
 
-   dir1 = u[0] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
-   // dir1 = 1; // DEBUG
-   HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
+    dir1 = u[0] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
 
-   dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
-   //dir2 = u[1] < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+    dir2 = u[1] > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET; /* the second motor is upside-down */
 
-   // dir2 = 1; // DEBUG
-   HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
+    HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
 
 
-	prescaler1= (uint16_t)  5200;// 8400;//12000 ;//8400;
-	f=HAL_RCC_GetPCLK1Freq()*2;
-	ARR= ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
-	CCR= ARR /2;
-    __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
-    __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
-   	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
-   	htim1->Instance->EGR = TIM_EGR_UG;
-
-   	prescaler2= (uint16_t)  8400;//12000 ;//8400;
-   	f=HAL_RCC_GetPCLK1Freq()*2;
-   	ARR=  ABS(u[1]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
-   	CCR= ARR /2;
-   	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);//2625
-   	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
-   	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
-   	htim2->Instance->EGR = TIM_EGR_UG;
-
-    return;
-
-
-
-}
-
-
-void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u , float *pos){
-    /* T_C = steps*clock_period */
-    int8_t dir1, dir2;
-    uint32_t f;
-    int32_t stepdir;
-    uint32_t steps, ARR, CCR;
-    uint16_t prescaler1, prescaler2;
-    float duty;
-    float u0,u1;
-    float tc0,tc1;
-
-    /*
-    ARR = (uint32_t) 65000;
-    CCR = (uint32_t) ARR/2;
+	prescaler1 = (uint16_t)  5200; // 8400;//12000 ;//8400;
+	f = HAL_RCC_GetPCLK1Freq()*2;
+	ARR = ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
+	CCR = ARR /2;
+    __HAL_TIM_SET_PRESCALER(htim1, prescaler1); //2625
     __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
     __HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
     htim1->Instance->EGR = TIM_EGR_UG;
-    */
-    // rad2stepdir(u[0], RESOLUTION, (float) 1/T_C, &steps, &dir);
 
+   	prescaler2 = (uint16_t)  8400; //12000 ;//8400;
+    f = HAL_RCC_GetPCLK1Freq()*2;
+    ARR =  ABS(u[1]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
+    CCR = ARR /2;
+   	__HAL_TIM_SET_PRESCALER(htim2, prescaler2); //2625
+    __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+    __HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+    htim2->Instance->EGR = TIM_EGR_UG;
+    return;
+}
+
+/*
+#@
+@name: apply_position_input
+@brief: applies the position inputs to the motors
+@notes: it uses a timer to send a pulse width modulation signal whose frequency regulates the rotation speed of the motors.
+
+The position input is converted into a velocity input (using the relationship between max acceleration and time duration of a cycloidal trajectory):
+$$\Delta t = \sqrt{2\pi\cdot |u-pos|/factor}$$
+$$v = \frac{(u-pos)}{\Delta t}$$
+where the factor regulates how much the distance to move influences the time duration of the movement.
+The formulae used to set the ARR and CCR registers:
+$$ARR = \frac{Res\cdot freq_{clock}}{v\cdot reduction\cdot microstepping\cdot prescaler}$$
+$$CCR = ARR/2$$
+with Res being the motor step resolution (in radians), v is the velocity, reduction is the reduction ratio and prescaler is the prescaler value (which is fixed).
+@inputs: 
+- TIM_HandleTypeDef \*htim1: pointer to the handler of the timer that generates the PWM signal for the first motor;
+- TIM_HandleTypeDef \*htim2: pointer to the handler of the timer that generates the PWM signal for the second motor;
+- float \*u: pointer to a float array of size two containing the position input;
+- float \*pos: pointer to a float array of size two containing the actual position of the manipulator;
+@outputs: 
+- void;
+@#
+*/
+void apply_position_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, float *u , float *pos){
+    int8_t dir1, dir2;
+    uint32_t f;
+    uint32_t ARR, CCR;
+    uint16_t prescaler1, prescaler2;
+    float u0,u1;
+    float tc0,tc1;
+
+    /* if the movement is too small, ignore it -> avoids vibrations */
+    /* find the time duration of the movement based on the cycloid */
     if (ABS(u[0]-pos[0])<0.01){
-    	tc0= 1000000;
+        tc0= 1000000;
     }else{
-    tc0 = sqrt(2*M_PI*ABS(u[0]-pos[0])/0.3);//0.75
+        tc0 = sqrt(2*M_PI*ABS(u[0]-pos[0])/0.3); //0.75 /* 0.3 ----> as if it was the jerk: how much the acceleration can change */
     }
 
     if (ABS(u[1]-pos[1])<0.01){
-        	tc1= 1000000;
-        }else{
-        tc1 = sqrt(2*M_PI*ABS(u[1]-pos[1])/1.5);   //1.5 ----> come se fosse un jerk
-        }
+        tc1= 1000000;
+    }else{
+        tc1 = sqrt(2*M_PI*ABS(u[1]-pos[1])/1.5);   /* 1.5 ----> as if it was the jerk: how much the acceleration can change */
+    }
 
 
+    /* the actual position input is the distance to move, which then gets converted into a velocity input */
     u0=(u[0]-pos[0])/tc0;
     u1=(u[1]-pos[1])/tc1;
 
-    //printf("%d ;%f ; %f \n",count ,u1, tc1 );
-    //fflush(stdout);
+	dir1 = u0 < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
+	// dir1 = 1; // DEBUG
+	HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
 
-        dir1 = u0 < 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
-       // dir1 = 1; // DEBUG
-       HAL_GPIO_WritePin(DIR_1_GPIO_Port, DIR_1_Pin, dir1);
+	dir2 = u1 > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET; /* the second motor is upside down */
+	// dir2 = 1; // DEBUG
+	HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
 
-       dir2 = u1 > 0 ?  GPIO_PIN_SET : GPIO_PIN_RESET;
-       // dir2 = 1; // DEBUG
-       HAL_GPIO_WritePin(DIR_2_GPIO_Port, DIR_2_Pin, dir2);
+	prescaler1= (uint16_t) 8400; //12000 ;//8400;
+	f=HAL_RCC_GetPCLK1Freq()*2;
+	ARR= ABS(u0) < 0.01 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u0)*reduction1*16*prescaler1));
+	CCR= ARR /2;
+	__HAL_TIM_SET_PRESCALER(htim1, prescaler1); //2625
+	__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
+	__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
+	htim1->Instance->EGR = TIM_EGR_UG;
 
-
-
-
-		   prescaler1= (uint16_t) 8400;//12000 ;//8400;
-		   f=HAL_RCC_GetPCLK1Freq()*2;
-		   ARR= ABS(u0) < 0.01 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u0)*reduction1*16*prescaler1));
-		   CCR= ARR /2;
-		   __HAL_TIM_SET_PRESCALER(htim1, prescaler1);//2625
-			__HAL_TIM_SET_AUTORELOAD(htim1, ARR);
-		__HAL_TIM_SET_COMPARE(htim1, TIM_CHANNEL_1, CCR);
-		htim1->Instance->EGR = TIM_EGR_UG;
-
-   	prescaler2= (uint16_t) 8400;//12000 ;//8400;
-   	f=HAL_RCC_GetPCLK1Freq()*2;
-   	ARR=  ABS(u1) < 0.01 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u1)*reduction2*16*prescaler2));
-   	CCR= ARR /2;
-   	__HAL_TIM_SET_PRESCALER(htim2, prescaler2);//2625
-   	__HAL_TIM_SET_AUTORELOAD(htim2, ARR);
-   	__HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
-   	htim2->Instance->EGR = TIM_EGR_UG;
-
-
-
+   	prescaler2= (uint16_t) 8400; //12000 ;//8400;
+    f=HAL_RCC_GetPCLK1Freq()*2;
+    ARR=  ABS(u1) < 0.01 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u1)*reduction2*16*prescaler2));
+    CCR= ARR /2;
+    __HAL_TIM_SET_PRESCALER(htim2, prescaler2); //2625
+    __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
+    __HAL_TIM_SET_COMPARE(htim2, TIM_CHANNEL_1, CCR);
+    htim2->Instance->EGR = TIM_EGR_UG;
     return;
-
 }
+
 
 /*
 #@
 @name: start_timers
 @brief: starts all the timers needed for the control
 @inputs:
-- TIM_HandleTypeDef *htim1
-- TIM_HandleTypeDef *htim2
-- TIM_HandleTypeDef *htim3
-- TIM_HandleTypeDef *htim4
-@outputs: void
+- TIM_HandleTypeDef \*htim1: pointer to the first timer handler;
+- TIM_HandleTypeDef \*htim2: pointer to the second timer handler;
+- TIM_HandleTypeDef \*htim3: pointer to the third timer handler;
+- TIM_HandleTypeDef \*htim4: pointer to the fourth timer handler;
+@outputs: 
+- void;
 @#
 */
-
 void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
     HAL_TIM_Base_Start_IT(htim1);
     HAL_TIM_Base_Start_IT(htim2);
@@ -1156,16 +1042,18 @@ void start_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_Handle
         HardFault_Handler();
     }
 }
+
 /*
 #@
 @name: stop_timers
 @brief: stops all the timers needed for the control
 @inputs:
-- TIM_HandleTypeDef *htim1
-- TIM_HandleTypeDef *htim2
-- TIM_HandleTypeDef *htim3
-- TIM_HandleTypeDef *htim4
-@outputs: void
+- TIM_HandleTypeDef \*htim1: pointer to the first timer handler;
+- TIM_HandleTypeDef \*htim2: pointer to the second timer handler;
+- TIM_HandleTypeDef \*htim3: pointer to the third timer handler;
+- TIM_HandleTypeDef \*htim4: pointer to the fourth timer handler;
+@outputs: 
+- void;
 @#
 */
 void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleTypeDef *htim3, TIM_HandleTypeDef *htim4){
@@ -1180,49 +1068,38 @@ void stop_timers(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, TIM_HandleT
 /*
 #@
 @name: log_data
-@brief: Send all the manipulator data on the serial connection with a message
+@brief: Send all the manipulator data via serial connection with a message
 @inputs:
-- UART_HandleTypeDef *huart
-- man_t *manip
-@outputs: void
+- UART_HandleTypeDef \*huart: pointer to the uart handler;
+- man_t \*manip: pointer to the man_t structure that holds all the manipulator data;
+@outputs: 
+- void;
 @#
 */
 void log_data(UART_HandleTypeDef *huart, man_t *manip){
-    //unsigned  int encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
-	uint32_t encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d;
-    uint32_t timestamp;
-    uint8_t i;
-    // SECTION DEBUG
-    for(i = 0; i < sizeof tx_data; i++){
-        tx_data[i] = 0;
-    }
-    // !SECTION DEBUG
+	uint32_t encoding_q0, encoding_q1;
+    
     float q;
     rblast(&manip->q0_actual, &q);
     memcpy(&encoding_q0, &q, sizeof q);
     rblast(&manip->q1_actual, &q);
     memcpy(&encoding_q1, &q, sizeof q);
-    rbpeek(&manip->q0, &q);
-    memcpy(&encoding_q0_d, &q, sizeof q);
-    rbpeek(&manip->q1, &q);
-    memcpy(&encoding_q1_d, &q, sizeof q);
-    timestamp = HAL_GetTick();
-    //sprintf(tx_data, "%X:%X:%X:%X:%X\n", (unsigned long long int) timestamp, encoding_q0, encoding_q1, encoding_q0_d, encoding_q1_d); /*Timestamp:q0:q1*/
+    
     sprintf(tx_data, "0x%08x:0x%08x\n", encoding_q0  , encoding_q1);
-    printf("%s \n",tx_data);
-    fflush(stdout);
+    
     HAL_UART_Transmit_DMA(huart, (uint8_t *) tx_data, sizeof tx_data); /* send encoder data for    purposes */
 }
+
 /*
 #@
-@name:setup_encoders
-@brief: performs the necessary operations for the setup of the encoders
+@name: setup_encoders
+@brief: performs the necessary operations for the setup of the timer that will manage the econder sampling
 @inputs:
-- TIM_HandleTypeDef *htim
-@outputs: void
+- TIM_HandleTypeDef \*htim: pointer to the sampling timer handler;
+@outputs: 
+- void;
 @#
 */
-
 void setup_encoders(TIM_HandleTypeDef *htim){
 	const uint32_t clock_freq = 84000000;
 	uint16_t ARR;
@@ -1233,26 +1110,25 @@ void setup_encoders(TIM_HandleTypeDef *htim){
 	HAL_TIM_Base_Start_IT(htim); /* start the sampling timer */
 }
 
+
 /*
 #@
 @name: PID_controller_velocity
-@brief: Calculate the position control  output for the links.
-@note:The motor driver (DRV8825) take a STEP/DIR input, that represent a velocity command.
-For accomplish the translation from position input to velocity input, first of all we read the current position,after that ,
-we calculate the distance between the setpoint  position and the current position, than we calculate the needed time for motion using the cycloidal trajectory.
-The velocity output is given by the ratio between distance and time. To avoid vibration we set  a treshold
+@brief: Calculate the velocity control output for the motors.
+@notes: The motor driver (DRV8825) take a STEP/DIR input, that represent a velocity command.
+To accomplish the translation from position input to velocity input, first of all the current position is read, after that
+the distance between the setpoint position and the current position is calculated, then the needed time for motion is calculated using the cycloidal trajectory.
+The velocity output is given by the ratio between distance and time. To avoid vibration a threshold is set.
 @inputs:
-- man_t *manip: pointer to the manipulator struct;
-- pid_controller_t *pid1 : pointer to the PI velocity controller of the first joint
-- pid_controller_t *pid2 : pointer to the PI velocity controller of the second joint
-- float u: velocity output
-- float setpoint: (not used) put to 0, the set point is read from the manip struct
-
+- man_t \*manip: pointer to the manipulator struct;
+- pid_controller_t \*pid1 : pointer to the PI velocity controller of the first joint;
+- pid_controller_t \*pid2 : pointer to the PI velocity controller of the second joint;
+- float \*u: pointer to the velocity output;
 @outputs:
 - void;
 @#
 */
-void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u , float setpoint){
+void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u){
 
 	float set_point1,set_point2,measure1, measure2,u0,u1,tc0,tc1;
 
@@ -1260,10 +1136,10 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	rbpeek(&manip->q1,&set_point2);
 
 
-
+    /*
 	dq_actual0=set_point1;
 	//ddq_actual1=set_point2;
-
+    */
 
 	rblast(&manip->q0_actual,&measure1);
 	rblast(&manip->q1_actual,&measure2);
@@ -1271,29 +1147,23 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	disp1=measure1;
 	disp2=measure2;
 
-
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
-
-
-
-	//printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
 
 	*u=pid1->out;
 	*(u+1)=pid2->out;
 
     if (ABS(u[0]-measure1)<0.01){
-    	tc0= 1000000;
+        tc0= 1000000;
     }else{
-    tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/0.4);//1.05
+    tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/0.4); //1.05
     }
 
-   // fflush(stdout);
     if (ABS(u[1]- measure2)<0.01){
-        	tc1= 1000000;
-        }else{
+        tc1= 1000000;
+    }else{
         tc1 = sqrt(2*M_PI*ABS(u[1]-measure2)/0.4);   //1.5 ----> come se fosse un jerk
-        }
+    }
 
 
     u0=(u[0]-measure1)/tc0;
@@ -1302,12 +1172,10 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     *u=u0;
     *(u+1)=u1;
 
-
-    ddq_actual0=pid1->out;
-    ddq_actual1=pid2->out;
-
-
-
+    /* SECTION DEBUG */
+    ddq_actual0 = pid1->out;
+    ddq_actual1 = pid2->out;
+    /* !SECTION DEBUG */
 }
 
 /*
@@ -1315,31 +1183,28 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 @name: PID_controller_velocity
 @brief: Calculate the velocity control  output for the links.
 @inputs:
-- man_t *manip: pointer to the manipulator struct;
-- pid_controller_t *pid1 : pointer to the PI velocity controller of the first joint
-- pid_controller_t *pid2 : pointer to the PI velocity controller of the second joint
+- man_t \*manip: pointer to the manipulator struct;
+- pid_controller_t \*pid1 : pointer to the PI velocity controller of the first joint
+- pid_controller_t \*pid2 : pointer to the PI velocity controller of the second joint
 - float u: velocity output
-- float setpoint: (not used) put to 0, the set point is read from the manip struct
-
 @outputs:
 - void;
 @#
 */
-
-void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u , float setpoint){
+void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller_t *pid2, float *u){
 
 	float set_point1,set_point2,measure1, measure2;
 
 	rbpeek(&manip->dq0,&set_point1);
 	rbpeek(&manip->dq1,&set_point2);
 
+    /*
 	//set_point1 = 0;
 	//set_point2 = setpoint;
 
-	dq_actual0=set_point1;
+	//dq_actual0=set_point1;
 	//ddq_actual1=set_point2;
-
-
+    */
 
 	rblast(&manip->dq0_actual,&measure1);
 	rblast(&manip->dq1_actual,&measure2);
@@ -1348,20 +1213,16 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 	rblast(&manip->q1_actual,&disp2);
 
 
-	PID_update(pid1,set_point1, measure1,T_C);
-	PID_update(pid2,set_point2, measure2,T_C);
+	PID_update(pid1, set_point1, measure1, T_C);
+	PID_update(pid2, set_point2, measure2, T_C);
 
+    /* SECTION DEBUG */
 	ddq_actual0=pid1->out;
 	ddq_actual1=pid2->out;
-
-
-	//printf("%d ;%f ; %f ; %f \n",count ,setpoint ,measure2 ,pid1->out );
+    /* !SECTION DEBUG*/
 
 	*u=pid1->out;
 	*(u+1)=pid2->out;
-	//*(u)=0;
-
-
 }
 
 
@@ -1371,18 +1232,17 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 #@
 @name: homing
 @brief: Start the homing sequence when the HOM command is recived from the serial
-@note: In the serial callback we don't call directly the  homing method because the if  this happen we are unable to sense other  the interrupt when the homing code is executed,
-to get around this drawback, we set high the flag variable homing_triggered and than in the main loop the homing sequence starts.
-The flag variables is_home1 and is_home 2 are used for disable the possibility of changing the link offset measured during the homing procedure
+@notes: In the serial callback we don't call directly the homing method because the if this happen we are unable to sense other the interrupt when the homing code is executed,
+to get around this drawback, the flag variable homing_triggered is set high and than in the main loop the homing sequence starts.
+The flag variables is_home1 and is_home2 are used to avoid changing the offset errors measured during the homing procedure.
 @inputs:
-- man_t *manip: pointer to the manipulator struct;
-- TIM_HandleTypeDef *htim1: First joint PWM out timer
-- TIM_HandleTypeDef *htim2: Second joint PWM out timer
-- pid_controller_t *pid_v1 : pointer to the PI velocity controller of the first joint
-- pid_controller_t *pid_v2 : pointer to the PI velocity controller of the second joint
-- pid_controller_t *pid_p1 : pointer to the PID  position controller of the first joint
-- pid_controller_t *pid_p2 : pointer to the PID  position controller of the second joint
-
+- man_t \*manip: pointer to the manipulator struct;
+- TIM_HandleTypeDef \*htim1: First joint PWM out timer;
+- TIM_HandleTypeDef \*htim2: Second joint PWM out timer;
+- pid_controller_t \*pid_v1 : pointer to the PI velocity controller of the first joint;
+- pid_controller_t \*pid_v2 : pointer to the PI velocity controller of the second joint;
+- pid_controller_t \*pid_p1 : pointer to the PID  position controller of the first joint;
+- pid_controller_t \*pid_p2 : pointer to the PID  position controller of the second joint;
 @outputs:
 - void;
 @#
@@ -1400,21 +1260,19 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
     limit_switch1=0;
     limit_switch2=0;
 
-     offset1=0;
-     offset2=0;
+    offset1=0;
+    offset2=0;
 
 	/*apply velocity input*/
 	while(!limit_switch1 ){
 
-	rbpush(&manip->dq0,-0.7);
+        rbpush(&manip->dq0,-0.7);
 
-	 update_speeds(manip);
-	 PID_controller_velocity( manip, pid_v1, pid_v2, u ,0);
-	 apply_velocity_input(htim1, htim2, u);
+        update_speeds(manip);
+        PID_controller_velocity( manip, pid_v1, pid_v2, u);
+        apply_velocity_input(htim1, htim2, u);
 
-	 HAL_Delay((uint32_t) (T_C*1000));
-
-
+        HAL_Delay((uint32_t) (T_C*1000));
 	}
 
 
@@ -1424,19 +1282,15 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 	apply_velocity_input(htim1, htim2, u);
 
 	while(!limit_switch2 ){
+        rbpush(&manip->dq0,0);
+        rbpush(&manip->dq1,0.5);
 
+		update_speeds(manip);
+		PID_controller_velocity( manip, pid_v1, pid_v2, u);
+		apply_velocity_input(htim1, htim2, u);
 
-	rbpush(&manip->dq0,0);
-    rbpush(&manip->dq1,0.5);
-
-		 update_speeds(manip);
-		 PID_controller_velocity( manip, pid_v1, pid_v2, u ,0);
-		 apply_velocity_input(htim1, htim2, u);
-
-		 HAL_Delay((uint32_t) (T_C*1000));
-
-
-		}
+		HAL_Delay((uint32_t) (T_C*1000));
+	}
 
 
 
@@ -1468,20 +1322,19 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 
 	if((ABS(pos[0])> 0.001) || (ABS(pos[1])> 0.001)){
 
-		PID_controller_position( manip, pid_p1, pid_p2, u ,0);
+		PID_controller_position( manip, pid_p1, pid_p2, u);
 		apply_velocity_input(htim1, htim2,  u);
 		rblast(&manip->q0_actual,&pos[0]);
 		rblast(&manip->q1_actual,&pos[1]);
 		HAL_Delay((uint32_t) (T_C*1000));
 
-		  printf("pos[0]: %f \n",pos[0]);
-		  fflush(stdout);
-	 }
-
-	else{
-		 break;
-	 }
+		printf("pos[0]: %f \n",pos[0]);
+		fflush(stdout);
 	}
+	else{
+		break;
+	}
+}
 
 
 
@@ -1497,17 +1350,6 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 	printf("  end homing \n");
 	fflush(stdout);
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 

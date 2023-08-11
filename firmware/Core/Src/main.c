@@ -139,7 +139,6 @@ int main(void)
 
 
   init_rate(&rate, (uint32_t) (T_C*1000)); /* initialize the rate struct */
-  rbclear(&timestamps);
   HAL_UART_Receive_DMA(&huart2, (uint8_t*) &rx_data, (uint8_t) DATA_SZ); /* DATA_SZ bytes of data for each reception */
   /* USER CODE END 2 */
 
@@ -152,20 +151,15 @@ int main(void)
 
   while (1)
   {
-
-
-
-  if (homing_triggered){
-	  //is_home1=1;
-	  //is_home2=1;
-	  homing(&manip, manip.htim_motor1, manip.htim_motor2, &pid_vel1, &pid_vel2,&pid_pos1,&pid_pos2);
-	  homing_triggered=0;
-
-  }
-
-
+    if (homing_triggered){
+      //is_home1=1;
+      //is_home2=1;
+      homing(&manip, manip.htim_motor1, manip.htim_motor2, &pid_vel1, &pid_vel2,&pid_pos1,&pid_pos2);
+      homing_triggered=0;
+    }
 
     update_speeds(&manip);
+    
     /* log data */
     if(log_triggered){
       log_data(&huart2, &manip);
@@ -173,33 +167,19 @@ int main(void)
       fflush(stdout);
       log_triggered = 0;
     }
-    //controller(&manip, v); /* apply the control law to find the input */
-    /* apply the inputs to the motors */
 
-
-
-
-    setpoint=0;
-   // ! debug NB ricorda di togliere il setpoint dal valore passato a pid e prenderlo direttamente da manip
-
-     PID_controller_position( &manip, &pid_pos1, &pid_pos2, v ,setpoint);
-
-
-
+    PID_controller_position( &manip, &pid_pos1, &pid_pos2, v);
 
     rblast(&manip.q0_actual,&pos[0]);
     rblast(&manip.q1_actual,&pos[1]);
-
+    /* apply the inputs to the motors */
     apply_velocity_input(&htim2, &htim5, v, pos);
-
-
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
     rate_sleep(&rate); /* wait with a fixed frequency */
     //HAL_Delay((uint32_t) (T_C*1000));
-    count++;
   }
   /* stop timers */
   stop_timers(&htim3, &htim4, &htim2, &htim5);
