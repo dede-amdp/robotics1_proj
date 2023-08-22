@@ -18,8 +18,8 @@ bytes:
 +7 for each ":" char (may be less)
 +6*18 bytes (18 characters to represent "0x"+hex)
 +1 for the penup value which is 1 or 0
-
-= 119 (bytes) -> use 128 bytes just in case longer messages are needed
++1 for the "\n" character
+= 120 (bytes)
 */
 #define DATA_SZ 120
 /* CONTROL TIME  The control time  must be 10 times smaller than the dominant time constant (0.022s)  */
