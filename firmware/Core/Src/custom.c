@@ -80,11 +80,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
         rbpush(&manip.penup, (float) atoi(data));
     }else if(!strcmp(cmd, "HOM")){
     	/* Home command case */
-    	/*
+
         printf(rx_data);
         fflush(stdout);
         homing_triggered=1;
-        */
+
     }else if(!strcmp(cmd, "POS")){
     	/* Position command case */
         log_triggered = 1;
@@ -1140,6 +1140,9 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	dq_actual0=set_point1;
 	//ddq_actual1=set_point2;
     */
+
+	//set_point1=-M_PI/3;
+	//set_point2=M_PI/6;
 
 	rblast(&manip->q0_actual,&measure1);
 	rblast(&manip->q1_actual,&measure2);

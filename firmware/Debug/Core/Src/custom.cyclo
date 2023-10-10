@@ -29,5 +29,5 @@ custom.c:1059:6:stop_timers	1
 custom.c:1079:6:log_data	1
 custom.c:1103:6:setup_encoders	1
 custom.c:1131:6:PID_controller_position	3
-custom.c:1194:6:PID_controller_velocity	1
-custom.c:1251:6:homing	5
+custom.c:1197:6:PID_controller_velocity	1
+custom.c:1254:6:homing	5

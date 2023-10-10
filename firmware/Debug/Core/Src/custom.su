@@ -29,5 +29,5 @@
 ../Core/Src/custom.c:1079:6:log_data	32	static
 ../Core/Src/custom.c:1103:6:setup_encoders	24	static
 ../Core/Src/custom.c:1131:6:PID_controller_position	56	static
-../Core/Src/custom.c:1194:6:PID_controller_velocity	40	static
-../Core/Src/custom.c:1251:6:homing	48	static
+../Core/Src/custom.c:1197:6:PID_controller_velocity	40	static
+../Core/Src/custom.c:1254:6:homing	48	static
