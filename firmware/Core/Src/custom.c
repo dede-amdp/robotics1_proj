@@ -1270,7 +1270,7 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 	while(!limit_switch1 ){
 
         rbpush(&manip->dq0,-0.7);
-
+        rbpush(&manip->dq1,0);
         update_speeds(manip);
         PID_controller_velocity( manip, pid_v1, pid_v2, u);
         apply_velocity_input(htim1, htim2, u);
@@ -1286,7 +1286,7 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 
 	while(!limit_switch2 ){
         rbpush(&manip->dq0,0);
-        rbpush(&manip->dq1,0.5);
+        rbpush(&manip->dq1,0.7);
 
 		update_speeds(manip);
 		PID_controller_velocity( manip, pid_v1, pid_v2, u);

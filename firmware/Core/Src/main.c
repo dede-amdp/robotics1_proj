@@ -152,8 +152,7 @@ int main(void)
   while (1)
   {
     if (homing_triggered){
-      //is_home1=1;
-      //is_home2=1;
+
       homing(&manip, manip.htim_motor1, manip.htim_motor2, &pid_vel1, &pid_vel2,&pid_pos1,&pid_pos2);
       homing_triggered=0;
     }
