@@ -86,6 +86,9 @@ int PID_update(pid_controller_t *pid, float set_point , float measure, float T_C
     /* calculate the error*/
 	error = set_point - measure;
 
+
+
+
 	/* proportional contribute*/
 	proportional= pid->Kp*error;
 

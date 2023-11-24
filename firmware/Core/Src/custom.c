@@ -734,9 +734,10 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffe
     rblast(dq_actual,&vel);
 
 
-    *v_est=0.8546*vel+((1-0.8546)*(succ-prev)/(T_C*5) );
+    *v_est=(0.8546*vel+((1-0.8546)*(succ-prev)/(T_C*5) )); //Prima non c'era il -
 
     /* filtering acceleration  with a first order filter  */
+
 
     rbget(dq_actual, RBUF_SZ-1, &succ);
     rbget(dq_actual, RBUF_SZ-2, &prev);
@@ -918,7 +919,7 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
 
 	prescaler1 = (uint16_t)  5200; // 8400;//12000 ;//8400;
 	f = HAL_RCC_GetPCLK1Freq()*2;
-	ARR = ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
+	ARR = ABS(u[0]) < 0.0001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
 	CCR = ARR /2;
     __HAL_TIM_SET_PRESCALER(htim1, prescaler1); //2625
     __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
@@ -927,7 +928,7 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
 
    	prescaler2 = (uint16_t)  8400; //12000 ;//8400;
     f = HAL_RCC_GetPCLK1Freq()*2;
-    ARR =  ABS(u[1]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
+    ARR =  ABS(u[1]) < 0.0001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
     CCR = ARR /2;
    	__HAL_TIM_SET_PRESCALER(htim2, prescaler2); //2625
     __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
@@ -1147,8 +1148,8 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 	rblast(&manip->q0_actual,&measure1);
 	rblast(&manip->q1_actual,&measure2);
 
-	disp1=measure1;
-	disp2=measure2;
+	//disp1=measure1;
+	//disp2=measure2;
 
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
@@ -1162,7 +1163,7 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/0.4); //1.05
     }
 
-    if (ABS(u[1]- measure2)<0.01){
+    if (ABS(u[1]- measure2)<0.009){
         tc1= 1000000;
     }else{
         tc1 = sqrt(2*M_PI*ABS(u[1]-measure2)/0.4);   //1.5 ----> come se fosse un jerk
@@ -1212,8 +1213,8 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 	rblast(&manip->dq0_actual,&measure1);
 	rblast(&manip->dq1_actual,&measure2);
 
-	rblast(&manip->q0_actual,&disp1);
-	rblast(&manip->q1_actual,&disp2);
+	//rblast(&manip->q0_actual,&disp1);
+	//rblast(&manip->q1_actual,&disp2);
 
 
 	PID_update(pid1, set_point1, measure1, T_C);
@@ -1256,6 +1257,7 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
     float u[2]={0, 0};
     float pos[2]={0, 0};
     float pos_real[2]={-2.11350, 2.39353 };
+
 
     is_home1=1;
     is_home2=1;
@@ -1331,8 +1333,8 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 		rblast(&manip->q1_actual,&pos[1]);
 		HAL_Delay((uint32_t) (T_C*1000));
 
-		printf("pos[0]: %f \n",pos[0]);
-		fflush(stdout);
+		//printf("pos[0]: %f \n",pos[0]);
+		//fflush(stdout);
 	}
 	else{
 		break;
