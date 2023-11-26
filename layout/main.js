@@ -8,7 +8,8 @@ const serial_com_btn = document.getElementById('start-serial-btn'); // button to
 const line_btn = document.getElementById('line-btn'); // line tool button
 const circle_btn = document.getElementById('circle-btn'); // circle tool button
 const penup_btn = document.getElementById('penup-btn'); // pen-up button
-const homing_btn = document.getElementById('homing-btn');
+const homing_btn = document.getElementById('homing-btn'); // homing button
+const repeatable_btn = document.getElementById('repeatable-btn'); // repeatable trajectory button
 var points = []; // list of points -> end effector coordinates
 var circle_definition = []; // points needed to define a circle (radius and arc)
 var man, traj; // manipulator and trajectory instance
@@ -35,6 +36,7 @@ line_btn.addEventListener('click', () => {tool = line_tool;});
 circle_btn.addEventListener('click', () => {tool = circle_tool;});
 penup_btn.addEventListener('click', () => {penup = !penup;})
 homing_btn.addEventListener('click',()=>{eel.py_homing_cmd()()} );
+repeatable_btn.addEventListener('click', ()=>repeatable_trajectory());
 
 // get continuous updates on mouse position
 input_canvas.addEventListener('mousemove', (e) => {
@@ -293,6 +295,18 @@ function handle_data() {
 function handle_serial() {
     eel.py_serial_startup()();
     eel.py_serial_online()(serial_online);
+}
+
+function repeatable_trajectory(){
+    /*
+    Simply adds two points with the line tool so that the trajectory is always repeatable.
+    */
+    tool = line_tool;
+    points.push(new Point(input_canvas.width,input_canvas.height/2, settings));
+    points.push(new Point(input_canvas.width/2,input_canvas.height, settings));
+    var n = points.length;
+    traj.add_line(points[n-2], points[n-1], false);
+    man.reset_trace();
 }
 
 /*
