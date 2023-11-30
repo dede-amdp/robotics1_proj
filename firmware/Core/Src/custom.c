@@ -68,11 +68,25 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
         /* trj case*/
         /* READ the data from the serial and populate the corresponding members of the man_t struct 
            these values will be used to set the reference value for the control loop */
+
+    	//debug
+    	 //printf(rx_data);
+    	 //fflush(stdout);
+    	//debug
+
+
         data = strtok_r(cmd+sizeof cmd, ":",  &save_ptr);
         while(data != NULL){
             if(i == 6) break; /* reading penup */
             encoding = strtoull(data, NULL, 16); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
             memcpy(&value, &encoding, sizeof value); /* copy the IEEE754 double representation into a memory space for double */
+
+            /*
+            if(i==0 || i==1){
+             printf("%f \n",value);
+             fflush(stdout);
+            }*/
+
             rbpush((((ringbuffer_t *) &manip)+i), (float) value); /* push the value inside the correct ringbuffer ringbuffer */
             data = strtok_r(NULL, ":", &save_ptr);
             i++;
@@ -1133,16 +1147,19 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 
 	float set_point1,set_point2,measure1, measure2,u0,u1,tc0,tc1;
 
-	rbpeek(&manip->q0,&set_point1);
-	rbpeek(&manip->q1,&set_point2);
+	rblast(&manip->q0,&set_point1);
+	rblast(&manip->q1,&set_point2);
 
 
     /*
 	dq_actual0=set_point1;
-	//ddq_actual1=set_point2;
+
     */
 
-	//set_point1=-M_PI/3;
+	ddq_actual1=set_point2;
+
+
+	//set_point1=0;
 	//set_point2=M_PI/6;
 
 	rblast(&manip->q0_actual,&measure1);
@@ -1170,6 +1187,10 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     }
 
 
+    ddq_actual0=set_point1;
+    disp2=u1;//debug
+    disp1=pid2->prev_err;
+
     u0=(u[0]-measure1)/tc0;
     u1=(u[1]-measure2)/tc1;
 
@@ -1177,8 +1198,8 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     *(u+1)=u1;
 
     /* SECTION DEBUG */
-    ddq_actual0 = pid1->out;
-    ddq_actual1 = pid2->out;
+    //ddq_actual0 = pid1->out;
+   // ddq_actual1 = pid2->out;
     /* !SECTION DEBUG */
 }
 
@@ -1199,8 +1220,8 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 
 	float set_point1,set_point2,measure1, measure2;
 
-	rbpeek(&manip->dq0,&set_point1);
-	rbpeek(&manip->dq1,&set_point2);
+	rblast(&manip->dq0,&set_point1);
+	rblast(&manip->dq1,&set_point2);
 
     /*
 	//set_point1 = 0;

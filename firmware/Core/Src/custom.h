@@ -64,11 +64,11 @@ bytes:
 
 
 /* PID PARAMETER  for position control*/
-#define KP_P1  30//28 //2.4  //2.2688
-#define KP_P2  20//25// 18//2.1688
+#define KP_P1  20//28 //2.4  //2.2688
+#define KP_P2   20//25// 18//2.1688
 
 #define TI_P1  4//0.8//0.08//0.033
-#define TI_P2  3 //0.8//0.043
+#define TI_P2  4 //0.8//0.043
 
 
 #define TD_P1 0.0075

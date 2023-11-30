@@ -175,8 +175,7 @@ int main(void)
     rblast(&manip.q1_actual,&pos[1]);
 
 
-    rblast(&manip.q0,&disp1);
-    disp2=disp1-pos[1];
+
 
     /* apply the inputs to the motors */
     apply_velocity_input(&htim2, &htim5, v, pos);

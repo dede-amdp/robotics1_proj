@@ -362,6 +362,7 @@ def ik(x:float, y:float, z:float = 0, theta:float = None, sizes:dict[float] = {'
 
 
     q = np.array([[q1,q2,z]]).T
+    print(" q1: "+str(q1) + " q2: "+str(q2))
     return q
 
 """ #@
