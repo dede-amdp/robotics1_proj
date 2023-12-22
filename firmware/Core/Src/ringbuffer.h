@@ -3,7 +3,7 @@
 #ifndef RB_DEF
 #define RB_DEF
 
-#define RBUF_SZ 10
+#define RBUF_SZ 100 // PRIMA ERA 10
 
 typedef uint8_t rberror_t; // to show errors
 typedef float rbelement_t; // element of the buffer

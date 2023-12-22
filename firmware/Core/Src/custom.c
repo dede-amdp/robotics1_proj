@@ -68,11 +68,25 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
         /* trj case*/
         /* READ the data from the serial and populate the corresponding members of the man_t struct 
            these values will be used to set the reference value for the control loop */
+
+    	//debug
+    	 //printf(rx_data);
+    	 //fflush(stdout);
+    	//debug
+
+
         data = strtok_r(cmd+sizeof cmd, ":",  &save_ptr);
         while(data != NULL){
             if(i == 6) break; /* reading penup */
             encoding = strtoull(data, NULL, 16); /* convert from str to ull -> unsigned long long (uint64_t). REF: https://cplusplus.com/reference/cstdlib/strtoull/ */
             memcpy(&value, &encoding, sizeof value); /* copy the IEEE754 double representation into a memory space for double */
+
+            /*
+            if(i==0 || i==1){
+             printf("%f \n",value);
+             fflush(stdout);
+            }*/
+
             rbpush((((ringbuffer_t *) &manip)+i), (float) value); /* push the value inside the correct ringbuffer ringbuffer */
             data = strtok_r(NULL, ":", &save_ptr);
             i++;
@@ -80,11 +94,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
         rbpush(&manip.penup, (float) atoi(data));
     }else if(!strcmp(cmd, "HOM")){
     	/* Home command case */
-    	/*
+
         printf(rx_data);
         fflush(stdout);
         homing_triggered=1;
-        */
+
     }else if(!strcmp(cmd, "POS")){
     	/* Position command case */
         log_triggered = 1;
@@ -734,9 +748,10 @@ void speed_estimation(ringbuffer_t *q_actual, ringbuffer_t *dq_actual, ringbuffe
     rblast(dq_actual,&vel);
 
 
-    *v_est=0.8546*vel+((1-0.8546)*(succ-prev)/(T_C*5) );
+    *v_est=(0.8546*vel+((1-0.8546)*(succ-prev)/(T_C*5) )); //Prima non c'era il -
 
     /* filtering acceleration  with a first order filter  */
+
 
     rbget(dq_actual, RBUF_SZ-1, &succ);
     rbget(dq_actual, RBUF_SZ-2, &prev);
@@ -918,7 +933,7 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
 
 	prescaler1 = (uint16_t)  5200; // 8400;//12000 ;//8400;
 	f = HAL_RCC_GetPCLK1Freq()*2;
-	ARR = ABS(u[0]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
+	ARR = ABS(u[0]) < 0.0001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[0])*reduction1*16*prescaler1));
 	CCR = ARR /2;
     __HAL_TIM_SET_PRESCALER(htim1, prescaler1); //2625
     __HAL_TIM_SET_AUTORELOAD(htim1, ARR);
@@ -927,7 +942,7 @@ void apply_velocity_input(TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, fl
 
    	prescaler2 = (uint16_t)  8400; //12000 ;//8400;
     f = HAL_RCC_GetPCLK1Freq()*2;
-    ARR =  ABS(u[1]) < 0.001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
+    ARR =  ABS(u[1]) < 0.0001 ? 0:(uint32_t)  (RESOLUTION*f/(ABS(u[1])*reduction2*16*prescaler2));
     CCR = ARR /2;
    	__HAL_TIM_SET_PRESCALER(htim2, prescaler2); //2625
     __HAL_TIM_SET_AUTORELOAD(htim2, ARR);
@@ -1132,20 +1147,26 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
 
 	float set_point1,set_point2,measure1, measure2,u0,u1,tc0,tc1;
 
-	rbpeek(&manip->q0,&set_point1);
-	rbpeek(&manip->q1,&set_point2);
+	rblast(&manip->q0,&set_point1);
+	rblast(&manip->q1,&set_point2);
 
 
     /*
 	dq_actual0=set_point1;
-	//ddq_actual1=set_point2;
+
     */
+
+	ddq_actual1=set_point2;
+
+
+	//set_point1=0;
+	//set_point2=M_PI/6;
 
 	rblast(&manip->q0_actual,&measure1);
 	rblast(&manip->q1_actual,&measure2);
 
-	disp1=measure1;
-	disp2=measure2;
+	//disp1=measure1;
+	//disp2=measure2;
 
 	PID_update(pid1,set_point1, measure1,T_C);
 	PID_update(pid2,set_point2, measure2,T_C);
@@ -1159,12 +1180,16 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     tc0 = sqrt(2*M_PI*ABS(u[0]-measure1)/0.4); //1.05
     }
 
-    if (ABS(u[1]- measure2)<0.01){
+    if (ABS(u[1]- measure2)<0.009){
         tc1= 1000000;
     }else{
         tc1 = sqrt(2*M_PI*ABS(u[1]-measure2)/0.4);   //1.5 ----> come se fosse un jerk
     }
 
+
+    ddq_actual0=set_point1;
+    disp2=u1;//debug
+    disp1=pid2->prev_err;
 
     u0=(u[0]-measure1)/tc0;
     u1=(u[1]-measure2)/tc1;
@@ -1173,8 +1198,8 @@ void PID_controller_position(man_t *manip, pid_controller_t *pid1,pid_controller
     *(u+1)=u1;
 
     /* SECTION DEBUG */
-    ddq_actual0 = pid1->out;
-    ddq_actual1 = pid2->out;
+    //ddq_actual0 = pid1->out;
+   // ddq_actual1 = pid2->out;
     /* !SECTION DEBUG */
 }
 
@@ -1195,8 +1220,8 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 
 	float set_point1,set_point2,measure1, measure2;
 
-	rbpeek(&manip->dq0,&set_point1);
-	rbpeek(&manip->dq1,&set_point2);
+	rblast(&manip->dq0,&set_point1);
+	rblast(&manip->dq1,&set_point2);
 
     /*
 	//set_point1 = 0;
@@ -1209,8 +1234,8 @@ void PID_controller_velocity(man_t *manip, pid_controller_t *pid1,pid_controller
 	rblast(&manip->dq0_actual,&measure1);
 	rblast(&manip->dq1_actual,&measure2);
 
-	rblast(&manip->q0_actual,&disp1);
-	rblast(&manip->q1_actual,&disp2);
+	//rblast(&manip->q0_actual,&disp1);
+	//rblast(&manip->q1_actual,&disp2);
 
 
 	PID_update(pid1, set_point1, measure1, T_C);
@@ -1254,6 +1279,7 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
     float pos[2]={0, 0};
     float pos_real[2]={-2.11350, 2.39353 };
 
+
     is_home1=1;
     is_home2=1;
 
@@ -1267,7 +1293,7 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 	while(!limit_switch1 ){
 
         rbpush(&manip->dq0,-0.7);
-
+        rbpush(&manip->dq1,0);
         update_speeds(manip);
         PID_controller_velocity( manip, pid_v1, pid_v2, u);
         apply_velocity_input(htim1, htim2, u);
@@ -1283,7 +1309,7 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 
 	while(!limit_switch2 ){
         rbpush(&manip->dq0,0);
-        rbpush(&manip->dq1,0.5);
+        rbpush(&manip->dq1,0.7);
 
 		update_speeds(manip);
 		PID_controller_velocity( manip, pid_v1, pid_v2, u);
@@ -1328,8 +1354,8 @@ void homing(man_t *manip,TIM_HandleTypeDef *htim1, TIM_HandleTypeDef *htim2, pid
 		rblast(&manip->q1_actual,&pos[1]);
 		HAL_Delay((uint32_t) (T_C*1000));
 
-		printf("pos[0]: %f \n",pos[0]);
-		fflush(stdout);
+		//printf("pos[0]: %f \n",pos[0]);
+		//fflush(stdout);
 	}
 	else{
 		break;

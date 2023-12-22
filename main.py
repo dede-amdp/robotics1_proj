@@ -19,7 +19,7 @@ import traceback
 settings = {
     'Tc' : 0.01, # s
     'data_rate': 1/100, # rate at which msgs are sent
-    'max_acc' : 0.1,#1.05, #1.05, # rad/s**2
+    'max_acc' : 0.35,#0.1,#1.05, #1.05, # rad/s**2
     'ser_started': False,
     'line_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t), # timing laws for line and circle segments
     'circle_tl': lambda t, tf: tpy.cycloidal([0, 1], 2, tf)[0][0](t) # lambda t, tf: t/tf
@@ -233,7 +233,7 @@ def py_get_data():
         current_q = [points[0,0], points[1,0]]
         
         print(current_q)
-        data = [{'type':'line', 'points':[current_q, data[0]['points'][0]], 'data':{'penup':True}}] + data[::-1]
+        data = [{'type':'line', 'points':[current_q, data[0]['points'][0]], 'data':{'penup':True}}] + data[::]
         
         # data contains the trajectory patches to stitch together
         # trajectory = {'type', 'points', 'data'}

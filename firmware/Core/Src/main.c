@@ -152,8 +152,7 @@ int main(void)
   while (1)
   {
     if (homing_triggered){
-      //is_home1=1;
-      //is_home2=1;
+      init_man(&manip, &htim3, &htim4,&htim2,&htim5);
       homing(&manip, manip.htim_motor1, manip.htim_motor2, &pid_vel1, &pid_vel2,&pid_pos1,&pid_pos2);
       homing_triggered=0;
     }
@@ -170,8 +169,14 @@ int main(void)
 
     PID_controller_position( &manip, &pid_pos1, &pid_pos2, v);
 
+
+
     rblast(&manip.q0_actual,&pos[0]);
     rblast(&manip.q1_actual,&pos[1]);
+
+
+
+
     /* apply the inputs to the motors */
     apply_velocity_input(&htim2, &htim5, v, pos);
 

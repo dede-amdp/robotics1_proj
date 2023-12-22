@@ -362,6 +362,7 @@ def ik(x:float, y:float, z:float = 0, theta:float = None, sizes:dict[float] = {'
 
 
     q = np.array([[q1,q2,z]]).T
+    print(" q1: "+str(q1) + " q2: "+str(q2))
     return q
 
 """ #@
@@ -553,6 +554,7 @@ def slice_trj(patch: dict, **kargs):
     l = (ep-sp).mag() # linear distance between the two points
     c = Point(*patch['data']['center']) if patch['type'] == 'circle' else None # center of the circle
     angle = 0
+    radius=abs((sp-c).mag()) if patch['type'] == 'circle' else None  #radius of the circle
     if patch['type'] == 'circle':
         v1 = (sp-c) 
         v2 = (ep-c) 
@@ -562,7 +564,7 @@ def slice_trj(patch: dict, **kargs):
 
     # length = l if patch['type'] == 'line' else patch['data']['radius']*abs(angle) # LENGTH OF THE PATH
     # NOTE: changed for testing purposes -> change when real accelerations values are found
-    length = l if patch['type'] == 'line' else abs(angle) # LENGTH OF THE PATH
+    length = l if patch['type'] == 'line' else abs(angle)*radius # LENGTH OF THE PATH
     tf = sqrt(2*pi*length/kargs['max_acc']) # duration of the motion
 
     points = [] # points (in operational space)
@@ -571,8 +573,8 @@ def slice_trj(patch: dict, **kargs):
         # patch['points'] -> [[x0, y0], [x1, y1]]
         qt0 = list(ik(patch['points'][0][0], patch['points'][0][1], 1, None, kargs['sizes']).T[0])
         qt1 = list(ik(patch['points'][1][0], patch['points'][1][1], 1, None, kargs['sizes']).T[0])
-        (traj0, dt0) = cycloidal([qt0[0], qt1[0]], kargs['max_acc'], tf) # first motor
-        (traj1, dt1) = cycloidal([qt0[1], qt1[1]], kargs['max_acc'], tf) # second motor
+        (traj0, dt0) = cycloidal([qt0[0], qt1[0]], kargs['max_acc']*0.4, tf) # first motor
+        (traj1, dt1) = cycloidal([qt0[1], qt1[1]], kargs['max_acc']*0.4, tf) # second motor
         for t in rangef(0, kargs['Tc'], tf):
             if t <= dt0 : q0s.append(traj0[0](t))
             else: q0s.append(q0s[-1]) # if the trajectories don't have the same length
